@@ -1,0 +1,38 @@
+basic unit of data is a piece
+a piece has a type: (official, commission, fan-created)
+a piece has tags
+a piece can have upto 1 canonical media (txt, png, jpeg, etc)
+a piece can have drafts
+    a draft has a piece of media attached and some metadata
+a piece can have raws
+    a raw has a piece of media attached and some metadata
+a piece can have variants
+    a variant has a piece of media attached and some metadata
+    each variant can have additional tags which are union'd with the piece's tags
+a piece can have a price:
+    a base price
+    a tip
+
+a media has
+    a date added
+    optionally a list of links to sources
+    rating: safe, tasteful, explicit
+
+basic tag info is
+    a name
+    a description
+
+a tag when associated with piece has
+    optionally a category
+
+starting categories are:
+    character:
+    artist:
+    (none):
+
+categories have:
+    a color
+    a description
+    
+
+

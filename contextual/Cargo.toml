@@ -1,0 +1,10 @@
+[package]
+authors = ["AngelOfSol <julietckilian@gmail.com>"]
+edition = "2018"
+name = "contextual"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winreg = "0.8.0"

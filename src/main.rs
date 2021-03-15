@@ -1,15 +1,17 @@
 use std::io::stdin;
 
+use backend::Backend;
 use clap::Clap;
 use config::Config;
 
+mod backend;
 mod cli;
 mod config;
-mod contextual;
-mod project_dir;
+mod model;
 
-fn main() {
-    let mut config: Config = if let Some(config) = Config::load() {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let mut config: Config = if let Ok(config) = Config::load() {
         config
     } else {
         let config = Config::default();
@@ -21,28 +23,37 @@ fn main() {
 
     match opts.subcmd {
         cli::SubCommand::Init { path } => {
-            let path = path.or_else(|| std::env::current_dir().ok()).unwrap();
-            if !config.data_dirs.contains(&path) {
-                config.data_dirs.push(path);
+            let root = path.unwrap_or(std::env::current_dir()?);
+            if !config.data_dirs.contains(&root) {
+                config.data_dirs.push(root.clone());
                 config.save().unwrap();
             }
 
-            println!("{:?}", config.data_dirs);
-            let mut x = String::new();
-            stdin().read_line(&mut x).unwrap();
+            let _ = Backend::init_at_path(root).await?;
         }
         cli::SubCommand::Contextual { subcmd } => match subcmd {
             cli::ContextualSubCommand::Install => {
-                contextual::install().unwrap();
+                contextual::install()?;
             }
             cli::ContextualSubCommand::Remove => {
-                contextual::remove().unwrap();
+                contextual::remove()?;
             }
         },
-        cli::SubCommand::Add { path } => {
-            println!("Adding: {:?}", path);
+        cli::SubCommand::Add { path, dir } => {
+            let root = config.data_dirs[dir].clone();
+            let mut backend = Backend::from_path(root).await?;
+            backend.add_file(path).await?;
+            for piece in backend.query_pieces().await? {
+                dbg!(piece);
+            }
             let mut x = String::new();
-            stdin().read_line(&mut x).unwrap();
+            stdin().read_line(&mut x)?;
+        }
+        cli::SubCommand::ResetConfig => {
+            config = Config::default();
+            config.save()?;
         }
     }
+
+    Ok(())
 }

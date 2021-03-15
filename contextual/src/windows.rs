@@ -1,5 +1,11 @@
 use std::io::Result;
 use winreg::{enums::HKEY_CURRENT_USER, RegKey};
+struct ShellEntry {
+    name: &'static str,
+    label: &'static str,
+    command: String,
+}
+
 pub fn install() -> Result<()> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let classes =
@@ -55,12 +61,6 @@ fn create_background_folder_context_menu(classes: &RegKey) -> Result<()> {
     )?;
 
     Ok(())
-}
-
-struct ShellEntry {
-    name: &'static str,
-    label: &'static str,
-    command: String,
 }
 
 fn create_shell_entry(background: &RegKey, entry: ShellEntry) -> Result<()> {
