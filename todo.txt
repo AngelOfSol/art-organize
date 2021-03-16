@@ -36,3 +36,17 @@ categories have:
     
 
 
+
+consider putting app_state behind a Mutex, so the gui thread can write to it
+
+put the DB behind an Arc<RwLock>?
+
+crate tab based system, where each tab is its own ui rendering and data editing.
+
+decide how often to save?
+
+1) Arc<RwLock<_>> only the relevant parts of state that the UI looks at
+2) create task for handling those messages
+3) move to messaging
+4) separate channel for each task type
+5) start working into backend, to create help methods to create pieces, et.al

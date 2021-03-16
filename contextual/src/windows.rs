@@ -60,6 +60,15 @@ fn create_background_folder_context_menu(classes: &RegKey) -> Result<()> {
         },
     )?;
 
+    create_shell_entry(
+        &background,
+        ShellEntry {
+            name: "render",
+            label: "Render Blobs",
+            command: make_command(r#"render-blobs "%V""#)?,
+        },
+    )?;
+
     Ok(())
 }
 

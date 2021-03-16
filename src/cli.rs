@@ -1,17 +1,15 @@
-use std::path::PathBuf;
-
 use clap::Clap;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Angel of Sol")]
 pub struct Opts {
-    #[clap(short, long)]
-    pub gui: bool,
     #[clap(subcommand)]
     pub subcmd: SubCommand,
 }
 
-#[derive(Clap)]
+#[derive(Clap, Debug, Serialize, Deserialize)]
 pub enum SubCommand {
     /// Creates a new database in the current working directory
     Init { path: Option<PathBuf> },
@@ -26,11 +24,13 @@ pub enum SubCommand {
         #[clap(subcommand)]
         subcmd: ContextualSubCommand,
     },
+    /// Runs the gui in the local directory.
+    Gui,
     /// Resets the configuration to the default values
     ResetConfig,
 }
 
-#[derive(Clap)]
+#[derive(Clap, Debug, Serialize, Deserialize)]
 pub enum ContextualSubCommand {
     /// Installs context menu handlers to the local file explorer
     Install,
