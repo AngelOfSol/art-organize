@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::{collections::BTreeMap, marker::PhantomData, ops::Index};
-use undo::{Command, Merge};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TableId<T>(usize, PhantomData<T>);
@@ -41,72 +40,6 @@ impl<T> PartialOrd for TableId<T> {
 impl<T> Ord for TableId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
-    }
-}
-
-pub enum TableCommand<T, TCommand> {
-    Added(T, Option<TableId<T>>),
-    Removed(Option<T>, TableId<T>),
-    Changed(TableId<T>, TCommand),
-}
-
-impl<T, TCommand> TableCommand<T, TCommand> {
-    pub fn add(value: T) -> Self {
-        Self::Added(value, None)
-    }
-    pub fn remove(id: TableId<T>) -> Self {
-        Self::Removed(None, id)
-    }
-
-    pub fn edit(id: TableId<T>, inner: TCommand) -> Self {
-        Self::Changed(id, inner)
-    }
-}
-
-impl<T: Clone, TCommand: Command<Target = T, Error = ()>> Command for TableCommand<T, TCommand> {
-    type Target = Table<T>;
-
-    type Error = ();
-
-    fn apply(&mut self, target: &mut Self::Target) -> undo::Result<Self> {
-        match self {
-            TableCommand::Added(item, id) => {
-                *id = Some(target.insert(item.clone()));
-                Ok(())
-            }
-            TableCommand::Removed(data, id) => {
-                *data = Some(target.remove(*id));
-                Ok(())
-            }
-            TableCommand::Changed(id, command) => command.apply(target.get_mut(*id).unwrap()),
-        }
-    }
-
-    fn undo(&mut self, target: &mut Self::Target) -> undo::Result<Self> {
-        match self {
-            TableCommand::Added(item, id) => {
-                *item = target.remove(id.unwrap());
-                Ok(())
-            }
-            TableCommand::Removed(item, id) => {
-                *id = target.insert(item.clone().unwrap());
-                Ok(())
-            }
-            TableCommand::Changed(id, command) => command.undo(target.get_mut(*id).unwrap()),
-        }
-    }
-
-    fn merge(&mut self, command: Self) -> Merge<Self> {
-        match (self, command) {
-            (TableCommand::Changed(lhs, inner), TableCommand::Changed(rhs, new)) if *lhs == rhs => {
-                match inner.merge(new) {
-                    Merge::No(command) => Merge::No(TableCommand::Changed(rhs, command)),
-                    Merge::Yes => Merge::Yes,
-                    Merge::Annul => Merge::Annul,
-                }
-            }
-            (_, command) => Merge::No(command),
-        }
     }
 }
 

@@ -567,7 +567,6 @@ dependencies = [
  "chrono",
  "serde",
  "slab 0.4.2 (git+https://github.com/tokio-rs/slab.git)",
- "undo",
 ]
 
 [[package]]
@@ -2161,15 +2160,6 @@ name = "ttf-parser"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3e5d7cd7ab3e47dda6e56542f4bbf3824c15234958c6e1bd6aaa347e93499fdc"
-
-[[package]]
-name = "undo"
-version = "0.42.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d04c10c6c34b76a8826a84674d4a6b08443346abd4943e238c9b64f430eeb3bb"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "unicode-segmentation"
