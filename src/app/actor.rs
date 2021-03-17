@@ -1,4 +1,4 @@
-use crate::{backend::Backend, cli::SubCommand};
+use crate::{backend::Backend, cli::SubCommand, raw_image::RawImage};
 use db::{BlobId, Db, Piece};
 use imgui::{im_str, TabItem, TextureId, Ui};
 use ipc::IpcReceiver;
@@ -6,7 +6,7 @@ use std::{
     collections::BTreeMap,
     sync::{Arc, RwLock},
 };
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, sync::mpsc};
 
 use super::piece_editor::PieceEditor;
 
@@ -14,37 +14,8 @@ pub struct Inner {
     pub ipc: IpcReceiver<SubCommand>,
     pub handle: Handle,
     pub backend: Backend,
-    pub tabs: Vec<AppTab>,
     pub image_cache: BTreeMap<BlobId, TextureId>,
-}
-
-pub enum AppTab {
-    Piece(PieceEditor),
-}
-
-pub enum TabResult {
-    Keep,
-    Kill,
-    Selected,
-}
-
-impl AppTab {
-    pub fn update(&mut self) {
-        match self {
-            AppTab::Piece(inner) => inner.update(),
-        }
-    }
-    pub fn label<'a>(&self, db: &'a Db) -> Option<&'a str> {
-        match self {
-            AppTab::Piece(inner) => inner.label(db),
-        }
-    }
-
-    pub fn render(&mut self, db: &mut Db, ui: &Ui<'_>) -> TabResult {
-        match self {
-            AppTab::Piece(inner) => inner.render(db, ui),
-        }
-    }
+    pub outgoing_images: mpsc::Sender<(BlobId, RawImage, RawImage)>,
 }
 
 pub struct AppActor(pub RwLock<Inner>);
@@ -70,7 +41,36 @@ impl AppActor {
 
             let id = write.backend.db.pieces.insert(piece);
 
-            write.tabs.push(AppTab::Piece(PieceEditor { id }));
+            // TODO add piece to app state
+        });
+    }
+
+    pub fn request_load_image(self: &Arc<Self>, blob_id: BlobId) {
+        let this = self.clone();
+
+        tokio::spawn(async move {
+            let rc = {
+                let read = this.0.read().unwrap();
+
+                if let Some(raw) = read.backend.db.blobs.get(blob_id) {
+                    raw.data.clone()
+                } else {
+                    return;
+                }
+            };
+
+            tokio::task::spawn_blocking(move || {
+                if let Ok((raw, thumbnail)) = RawImage::make(&rc) {
+                    this.0
+                        .read()
+                        .unwrap()
+                        .outgoing_images
+                        .blocking_send((blob_id, raw, thumbnail))
+                        .unwrap();
+                }
+            })
+            .await
+            .unwrap();
         });
     }
 }

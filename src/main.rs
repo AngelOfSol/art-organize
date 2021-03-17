@@ -1,4 +1,7 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, RwLock},
+};
 
 use app::{
     actor::{AppActor, Inner},
@@ -9,7 +12,10 @@ use clap::Clap;
 use config::Config;
 use gui::{run_event_loop, GuiContext};
 use ipc::start_server;
-use tokio::runtime::{Builder, Handle};
+use tokio::{
+    runtime::{Builder, Handle},
+    sync::mpsc,
+};
 use winit::event_loop::EventLoop;
 
 mod app;
@@ -77,14 +83,19 @@ async fn async_main() -> anyhow::Result<()> {
             let root = config.data_dirs[0].clone();
             let backend = Backend::from_path(root).await?;
             let event_loop = EventLoop::new();
+
+            let (tx, rx) = mpsc::channel(4);
+
             let app = App {
                 actor: Arc::new(AppActor(RwLock::new(Inner {
                     handle: Handle::current(),
                     backend,
                     ipc: start_server()?,
                     image_cache: Default::default(),
-                    tabs: Vec::new(),
+                    outgoing_images: tx,
                 }))),
+                incoming_images: rx,
+                images: BTreeMap::new(),
             };
             let gui = GuiContext::create(&event_loop).await?;
 

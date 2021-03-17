@@ -237,13 +237,14 @@ impl GuiContext {
         self.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn _load(&mut self, raw: RawImage) -> TextureId {
+    pub fn load(&mut self, raw: &RawImage) -> TextureId {
         let texture_config = TextureConfig {
             size: Extent3d {
                 width: raw.width,
                 height: raw.height,
                 ..Default::default()
             },
+
             label: None,
             ..Default::default()
         };
@@ -253,4 +254,9 @@ impl GuiContext {
         texture.write(&self.queue, &raw.data, raw.width, raw.height);
         self.renderer.textures.insert(texture)
     }
+}
+
+pub struct ImageIds {
+    base: TextureId,
+    thumbnail: TextureId,
 }

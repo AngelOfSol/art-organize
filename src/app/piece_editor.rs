@@ -4,8 +4,6 @@ use db::{Db, PieceId};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
-use super::actor::TabResult;
-
 pub struct PieceEditor {
     pub id: PieceId,
 }
@@ -15,11 +13,11 @@ impl PieceEditor {
     pub fn label<'a>(&self, db: &'a Db) -> Option<&'a str> {
         db.pieces.get(self.id).map(|piece| piece.name.as_str())
     }
-    pub fn render(&mut self, db: &mut Db, ui: &Ui<'_>) -> TabResult {
+    pub fn render(&mut self, db: &mut Db, ui: &Ui<'_>) {
         let piece = if let Some(value) = db.pieces.get_mut(self.id) {
             value
         } else {
-            return TabResult::Kill;
+            return;
         };
 
         let mut buf = piece.name.clone().into();
@@ -71,8 +69,6 @@ impl PieceEditor {
                 piece.tip_price = Some(value);
             }
         }
-
-        TabResult::Selected
     }
 }
 
