@@ -1,6 +1,6 @@
 use crate::{backend::Backend, cli::SubCommand};
-use db::{BlobId, Db, MaybeBlob, Piece};
-use imgui::{im_str, ChildWindow, StyleColor, TabItem, TabItemFlags, TextureId, Ui};
+use db::{BlobId, Db, Piece};
+use imgui::{im_str, TabItem, TextureId, Ui};
 use ipc::IpcReceiver;
 use std::{
     collections::BTreeMap,
@@ -72,7 +72,7 @@ impl AppActor {
         self.0.write().unwrap()
     }
     #[allow(clippy::needless_lifetimes)]
-    pub fn read<'a>(self: &'a Arc<Self>) -> impl std::ops::Deref<Target = Inner> + 'a {
+    pub fn _read<'a>(self: &'a Arc<Self>) -> impl std::ops::Deref<Target = Inner> + 'a {
         self.0.read().unwrap()
     }
     pub fn request_new_piece(self: &Arc<Self>) {

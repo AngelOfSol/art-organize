@@ -53,7 +53,7 @@ impl Backend {
         Ok(ret)
     }
 
-    pub async fn load_blob(&mut self, file: PathBuf) -> anyhow::Result<MaybeBlob> {
+    pub async fn _load_blob(&mut self, file: PathBuf) -> anyhow::Result<MaybeBlob> {
         let file_name = file
             .file_name()
             .and_then(|x| x.to_str())
@@ -135,7 +135,7 @@ impl Backend {
     pub fn query_pieces(&self) -> impl Iterator<Item = &Piece> {
         self.db.pieces.iter().map(|(_, data)| data)
     }
-    pub fn query_blobs(&self) -> impl Iterator<Item = &Blob> {
+    pub fn _query_blobs(&self) -> impl Iterator<Item = &Blob> {
         self.db.blobs.iter().map(|(_, data)| data)
     }
 }

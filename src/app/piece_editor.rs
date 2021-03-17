@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use db::{Db, PieceId, SourceType};
+use db::{Db, PieceId};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 

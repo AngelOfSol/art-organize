@@ -1,4 +1,3 @@
-use image::ImageFormat;
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
@@ -236,7 +235,7 @@ impl GuiContext {
         self.queue.submit(Some(encoder.finish()));
     }
 
-    pub fn load(&mut self, raw: RawImage) -> TextureId {
+    pub fn _load(&mut self, raw: RawImage) -> TextureId {
         let texture_config = TextureConfig {
             size: Extent3d {
                 width: raw.width,
