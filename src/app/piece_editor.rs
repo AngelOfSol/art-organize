@@ -39,8 +39,38 @@ impl PieceEditor {
             "Date Added: {}",
             piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
         ));
-        ui.text(im_str!("{:?}", piece.base_price));
-        ui.text(im_str!("{:?}", piece.tip_price));
+
+        let mut buf = piece
+            .base_price
+            .map(|price| price.to_string())
+            .unwrap_or_else(String::new)
+            .into();
+        if ui
+            .input_text(im_str!("Price"), &mut buf)
+            .chars_decimal(true)
+            .resize_buffer(true)
+            .build()
+        {
+            piece.base_price = buf.to_string().parse().ok();
+        }
+
+        let mut buf = piece
+            .tip_price
+            .map(|price| price.to_string())
+            .unwrap_or_else(String::new)
+            .into();
+        if ui
+            .input_text(im_str!("Tip"), &mut buf)
+            .chars_decimal(true)
+            .resize_buffer(true)
+            .build()
+        {
+            if buf.is_empty() {
+                piece.tip_price = None;
+            } else if let Ok(value) = buf.to_string().parse() {
+                piece.tip_price = Some(value);
+            }
+        }
 
         TabResult::Selected
     }

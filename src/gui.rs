@@ -38,16 +38,18 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
                 ..
             } => {
                 let size = context.window.inner_size();
+                if size.width != 0 && size.height != 0 {
+                    let sc_desc = wgpu::SwapChainDescriptor {
+                        usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+                        format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                        width: size.width as u32,
+                        height: size.height as u32,
+                        present_mode: wgpu::PresentMode::Mailbox,
+                    };
 
-                let sc_desc = wgpu::SwapChainDescriptor {
-                    usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
-                    format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                    width: size.width as u32,
-                    height: size.height as u32,
-                    present_mode: wgpu::PresentMode::Mailbox,
-                };
-
-                context.swap_chain = context.device.create_swap_chain(&context.surface, &sc_desc);
+                    context.swap_chain =
+                        context.device.create_swap_chain(&context.surface, &sc_desc);
+                }
             }
             Event::WindowEvent {
                 event:
@@ -188,7 +190,7 @@ impl GuiContext {
         let frame = match self.swap_chain.get_current_frame() {
             Ok(frame) => frame,
             Err(e) => {
-                eprintln!("dropped frame: {:?}", e);
+                //eprintln!("dropped frame: {:?}", e);
                 return;
             }
         };

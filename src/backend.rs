@@ -9,7 +9,7 @@ use anyhow::anyhow;
 use chrono::Local;
 use tokio::fs;
 
-use db::{Blob, BlobType, Db, MaybeBlob, Piece};
+use db::{Blob, BlobType, Db, MaybeBlob, Piece, PieceId};
 
 use crate::undo::UndoStack;
 
@@ -132,8 +132,8 @@ impl Backend {
         Ok(())
     }
 
-    pub fn query_pieces(&self) -> impl Iterator<Item = &Piece> {
-        self.db.pieces.iter().map(|(_, data)| data)
+    pub fn query_pieces(&self) -> impl Iterator<Item = (PieceId, &Piece)> {
+        self.db.pieces.iter()
     }
     pub fn _query_blobs(&self) -> impl Iterator<Item = &Blob> {
         self.db.blobs.iter().map(|(_, data)| data)

@@ -41,25 +41,8 @@ impl AppTab {
     }
 
     pub fn render(&mut self, db: &mut Db, ui: &Ui<'_>) -> TabResult {
-        let mut ret = TabResult::Keep;
-        let mut open = true;
-
-        if let Some(label) = self.label(db) {
-            TabItem::new(&im_str!("{}###tab", label))
-                .opened(&mut open)
-                .build(ui, || {
-                    ret = match self {
-                        AppTab::Piece(inner) => inner.render(db, ui),
-                    }
-                });
-        } else {
-            ret = TabResult::Kill;
-        }
-
-        if !open {
-            TabResult::Kill
-        } else {
-            ret
+        match self {
+            AppTab::Piece(inner) => inner.render(db, ui),
         }
     }
 }
