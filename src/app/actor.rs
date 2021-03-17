@@ -1,6 +1,6 @@
 use crate::{backend::Backend, cli::SubCommand};
-use db::{BlobId, MaybeBlob, Piece};
-use imgui::TextureId;
+use db::{BlobId, Db, MaybeBlob, Piece};
+use imgui::{im_str, ChildWindow, StyleColor, TabItem, TabItemFlags, TextureId, Ui};
 use ipc::IpcReceiver;
 use std::{
     collections::BTreeMap,
@@ -8,36 +8,86 @@ use std::{
 };
 use tokio::runtime::Handle;
 
+use super::piece_editor::PieceEditor;
+
 pub struct Inner {
     pub ipc: IpcReceiver<SubCommand>,
     pub handle: Handle,
     pub backend: Backend,
-    pub state: AppState,
+    pub tabs: Vec<AppTab>,
     pub image_cache: BTreeMap<BlobId, TextureId>,
+}
+
+pub enum AppTab {
+    Piece(PieceEditor),
+}
+
+pub enum TabResult {
+    Keep,
+    Kill,
+    Selected,
+}
+
+impl AppTab {
+    pub fn update(&mut self) {
+        match self {
+            AppTab::Piece(inner) => inner.update(),
+        }
+    }
+    pub fn label<'a>(&self, db: &'a Db) -> Option<&'a str> {
+        match self {
+            AppTab::Piece(inner) => inner.label(db),
+        }
+    }
+
+    pub fn render(&mut self, db: &mut Db, ui: &Ui<'_>) -> TabResult {
+        let mut ret = TabResult::Keep;
+        let mut open = true;
+
+        if let Some(label) = self.label(db) {
+            TabItem::new(&im_str!("{}###tab", label))
+                .opened(&mut open)
+                .build(ui, || {
+                    ret = match self {
+                        AppTab::Piece(inner) => inner.render(db, ui),
+                    }
+                });
+        } else {
+            ret = TabResult::Kill;
+        }
+
+        if !open {
+            TabResult::Kill
+        } else {
+            ret
+        }
+    }
 }
 
 pub struct AppActor(pub RwLock<Inner>);
 
-pub enum AppState {
-    Adding { piece: Piece, blobs: Vec<MaybeBlob> },
-    None,
-}
-
 impl AppActor {
     #[allow(clippy::needless_lifetimes)]
-    pub fn test<'a>(self: &'a Arc<Self>) -> impl std::ops::Deref<Target = Inner> + 'a {
+    pub fn write<'a>(self: &'a Arc<Self>) -> impl std::ops::DerefMut<Target = Inner> + 'a {
+        self.0.write().unwrap()
+    }
+    #[allow(clippy::needless_lifetimes)]
+    pub fn read<'a>(self: &'a Arc<Self>) -> impl std::ops::Deref<Target = Inner> + 'a {
         self.0.read().unwrap()
     }
     pub fn request_new_piece(self: &Arc<Self>) {
         let this = self.clone();
-        let handle = self.0.read().unwrap().handle.clone();
 
-        handle.spawn(async move {
+        tokio::spawn(async move {
             let mut write = this.0.write().unwrap();
-            write.state = AppState::Adding {
-                piece: Piece::default(),
-                blobs: vec![],
-            }
+
+            let piece = Piece::default();
+
+            write.backend.db.undo_checkpoint();
+
+            let id = write.backend.db.pieces.insert(piece);
+
+            write.tabs.push(AppTab::Piece(PieceEditor { id }));
         });
     }
 }

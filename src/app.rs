@@ -1,38 +1,16 @@
-use self::actor::AppActor;
-use crate::{consts::WINDOW_HEIGHT, gui::GuiContext};
-use actor::AppState;
-use imgui::{im_str, Ui, Window};
-use std::sync::Arc;
+use self::{actor::AppActor, piece_editor::PieceEditor};
+use crate::gui::GuiContext;
+use actor::{Inner, TabResult};
+use db::Db;
+use imgui::{
+    im_str, ChildWindow, MenuItem, Selectable, StyleColor, StyleVar, TabBar, TabBarFlags, Ui,
+    Window,
+};
+use std::{ops::DerefMut, sync::Arc};
+use winit::dpi::PhysicalSize;
 
 pub mod actor;
-
-pub struct Changed<T> {
-    pub dirty: bool,
-    value: T,
-}
-
-impl<T> Changed<T> {
-    fn clean(value: T) -> Self {
-        Self {
-            dirty: false,
-            value,
-        }
-    }
-}
-
-impl<T> std::ops::Deref for Changed<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.value
-    }
-}
-impl<T> std::ops::DerefMut for Changed<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.dirty = true;
-        &mut self.value
-    }
-}
+pub mod piece_editor;
 
 pub struct App {
     pub actor: Arc<AppActor>,
@@ -66,51 +44,88 @@ impl App {
         // }
     }
 
-    pub fn render(&mut self, ui: &Ui<'_>) {
-        let backend = self.actor.test();
+    pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
+        let mut flag = false;
+        {
+            let (mut backend, actor) = (self.actor.write(), &self.actor);
+            let Inner {
+                ipc,
+                handle,
+                backend,
+                tabs,
+                image_cache,
+            } = backend.deref_mut();
 
-        ui.show_default_style_editor();
-
-        Window::new(im_str!("Pieces"))
-            .movable(false)
-            .resizable(false)
-            .collapsible(false)
-            .position([0.0, 0.0], imgui::Condition::Always)
-            .size([240.0, WINDOW_HEIGHT], imgui::Condition::Always)
-            .build(ui, || match &backend.state {
-                AppState::Adding { piece, blobs } => {
-                    if ui.small_button(im_str!("New Piece")) {
-                        ui.open_popup(im_str!("Overwrite Confirm"));
+            ui.main_menu_bar(|| {
+                ui.menu(im_str!("File"), true, || {
+                    if MenuItem::new(im_str!("New Piece")).build(ui) {
+                        actor.request_new_piece();
                     }
+                });
+                ui.menu(im_str!("Edit"), true, || {
+                    if MenuItem::new(im_str!("Undo"))
+                        .enabled(backend.db.can_undo())
+                        .build(ui)
+                    {
+                        backend.db.undo();
+                    }
+                    if MenuItem::new(im_str!("Redo"))
+                        .enabled(backend.db.can_redo())
+                        .build(ui)
+                    {
+                        backend.db.redo();
+                    }
+                });
+            });
 
-                    ui.popup_modal(im_str!("Overwrite Confirm"))
-                        .collapsible(false)
-                        .movable(false)
-                        .resizable(false)
-                        .always_auto_resize(true)
-                        .build(|| {
-                            if ui.small_button(im_str!("Overwrite")) {
-                                ui.close_current_popup();
-                            }
-                            ui.same_line(0.0);
+            Window::new(im_str!("Explorer"))
+                .movable(false)
+                .resizable(false)
+                .collapsible(false)
+                .position([0.0, 20.0], imgui::Condition::Always)
+                .size([240.0, window.height - 20.0], imgui::Condition::Always)
+                .build(ui, || {
+                    for piece in backend.query_pieces() {
+                        ui.bullet_text(&im_str!("{}", piece.name));
+                    }
+                });
 
-                            if ui.small_button(im_str!("Cancel")) {
-                                ui.close_current_popup();
+            let color = ui.push_style_color(StyleColor::WindowBg, [0.067, 0.067, 0.067, 1.0]);
+            let mut close = None;
+
+            Window::new(im_str!("Main"))
+                .movable(false)
+                .resizable(false)
+                .collapsible(false)
+                .no_decoration()
+                .position([240.0, 20.0], imgui::Condition::Always)
+                .size(
+                    [window.width - 240.0, window.height - 20.0],
+                    imgui::Condition::Always,
+                )
+                .build(ui, || {
+                    TabBar::new(im_str!("Main Tabs"))
+                        .reorderable(true)
+                        .flags(TabBarFlags::AUTO_SELECT_NEW_TABS)
+                        .build(ui, || {
+                            for (idx, tab) in tabs.iter_mut().enumerate() {
+                                let id = ui.push_id(idx as i32);
+                                if let TabResult::Kill = tab.render(&mut backend.db, ui) {
+                                    close = Some(idx);
+                                }
+
+                                id.pop(ui);
                             }
                         });
+                });
+            if let Some(idx) = close {
+                tabs.remove(idx);
+            }
 
-                    ui.text(&im_str!("{}", piece.name));
-                    ui.text(&im_str!("Blob Count: {}", blobs.len()));
-                }
-                AppState::None => {
-                    if ui.small_button(im_str!("New Piece")) {
-                        self.actor.request_new_piece();
-                    }
+            color.pop(ui);
 
-                    for piece in backend.backend.query_pieces() {
-                        ui.text(&im_str!("{}", piece.name));
-                    }
-                }
-            });
+            let mut t = true;
+            ui.show_demo_window(&mut t);
+        }
     }
 }

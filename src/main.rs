@@ -1,7 +1,7 @@
 use std::sync::{Arc, RwLock};
 
 use app::{
-    actor::{AppActor, AppState, Inner},
+    actor::{AppActor, Inner},
     App,
 };
 use backend::Backend;
@@ -21,9 +21,10 @@ mod gui;
 mod loaders;
 mod raw_image;
 mod style;
+mod undo;
 
 fn main() -> anyhow::Result<()> {
-    let mut runtime = Builder::new_multi_thread().enable_all().build()?;
+    let runtime = Builder::new_multi_thread().enable_all().build()?;
 
     runtime.block_on(async_main())
 }
@@ -81,8 +82,8 @@ async fn async_main() -> anyhow::Result<()> {
                     handle: Handle::current(),
                     backend,
                     ipc: start_server()?,
-                    state: AppState::None,
                     image_cache: Default::default(),
+                    tabs: Vec::new(),
                 }))),
             };
             let gui = GuiContext::create(&event_loop).await?;

@@ -45,6 +45,16 @@ crate tab based system, where each tab is its own ui rendering and data editing.
 
 decide how often to save?
 
+undo history is saved on changes, for text boxes, its saved when item is deactivated_after_edit
+
+
+new piece -> creates a new piece and opens an editor window for it
+you can have multiple editor windows for pieces open [use a tab system] 
+each editor window has add/remove behaviour
+
+how do blobs interact? how do tags interact?
+
+
 1) Arc<RwLock<_>> only the relevant parts of state that the UI looks at
 2) create task for handling those messages
 3) move to messaging

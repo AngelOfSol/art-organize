@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 pub type TagId = TableId<Tag>;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Tag {
     pub name: String,
     pub description: String,

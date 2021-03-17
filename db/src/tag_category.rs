@@ -5,7 +5,7 @@ use crate::table::TableId;
 
 pub type TagCategoryId = TableId<TagCategory>;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct TagCategory {
     pub name: String,
     pub color: [u8; 4],

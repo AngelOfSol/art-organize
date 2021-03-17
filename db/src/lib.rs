@@ -21,7 +21,7 @@ mod table;
 mod tag;
 mod tag_category;
 
-#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 pub struct Db {
     pub pieces: Table<Piece>,
     pub blobs: Table<Blob>,

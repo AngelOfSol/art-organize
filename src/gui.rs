@@ -11,12 +11,7 @@ use winit::{
     window::Window,
 };
 
-use crate::{
-    app::App,
-    consts::{WINDOW_HEIGHT, WINDOW_WIDTH},
-    raw_image::RawImage,
-    style::modify_style,
-};
+use crate::{app::App, raw_image::RawImage, style::modify_style};
 
 pub struct GuiContext {
     _instance: wgpu::Instance,
@@ -96,8 +91,8 @@ impl GuiContext {
         let (window, size, surface) = {
             let window = Window::new(event_loop).unwrap();
             window.set_inner_size(LogicalSize {
-                width: WINDOW_WIDTH,
-                height: WINDOW_HEIGHT,
+                width: 1280.0,
+                height: 720.0,
             });
             window.set_title("ArtOrganize");
             let size = window.inner_size();
@@ -203,7 +198,7 @@ impl GuiContext {
             .expect("Failed to prepare frame");
         let ui = self.imgui.frame();
 
-        app.render(&ui);
+        app.render(&ui, self.window.inner_size().cast());
 
         let mut encoder: wgpu::CommandEncoder = self
             .device

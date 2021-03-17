@@ -43,7 +43,7 @@ impl<T> Ord for TableId<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table<T> {
     data: Slab<T>,
 }

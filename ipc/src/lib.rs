@@ -1,7 +1,6 @@
 use std::{
     fmt::Debug,
     io::{Read, Write},
-    marker::PhantomData,
 };
 
 use interprocess::local_socket::{LocalSocketListener, LocalSocketStream};

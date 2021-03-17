@@ -2,18 +2,20 @@ use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use anyhow::anyhow;
 use chrono::Local;
-use tokio::{fs, sync::mpsc};
+use tokio::fs;
 
 use db::{Blob, BlobType, Db, MaybeBlob, Piece};
 
+use crate::undo::UndoStack;
+
 pub struct Backend {
     root: PathBuf,
-    db: Db,
+    pub db: UndoStack<Db>,
 }
 
 fn data_file(mut path: PathBuf) -> PathBuf {
@@ -23,18 +25,28 @@ fn data_file(mut path: PathBuf) -> PathBuf {
 
 impl Backend {
     pub async fn save(&self) -> anyhow::Result<()> {
-        fs::write(data_file(self.root.clone()), bincode::serialize(&self.db)?).await?;
+        fs::write(
+            data_file(self.root.clone()),
+            bincode::serialize::<Db>(&self.db)?,
+        )
+        .await?;
         Ok(())
     }
 
     pub async fn from_path(root: PathBuf) -> anyhow::Result<Self> {
-        let db = bincode::deserialize(&fs::read(data_file(root.clone())).await?)?;
-        Ok(Self { root, db })
+        let db = bincode::deserialize::<Db>(&fs::read(data_file(root.clone())).await?)?;
+        Ok(Self {
+            root,
+            db: UndoStack::new(db),
+        })
     }
 
     pub async fn init_at_path(root: PathBuf) -> anyhow::Result<Self> {
         let db = Db::default();
-        let ret = Self { root, db };
+        let ret = Self {
+            root,
+            db: UndoStack::new(db),
+        };
 
         ret.save().await?;
 
