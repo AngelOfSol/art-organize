@@ -7,7 +7,7 @@ use crate::{
 use actor::Inner;
 use db::{BlobId, BlobType, Db};
 use futures_util::FutureExt;
-use gui_state::{MainWindow, ZoomStatus};
+use gui_state::MainWindow;
 use imgui::{im_str, MenuItem, MouseButton, StyleColor, Ui, Window};
 use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
 use tokio::sync::mpsc;
@@ -101,66 +101,26 @@ impl App {
             )
             .build(ui, || match &mut gui_state.main_window {
                 MainWindow::Gallery => render_gallery(ui, &backend.db, &actor, images),
-                MainWindow::Blob {
-                    id,
-                    unzoom: zoom_status,
-                } => {
+                MainWindow::Blob { id } => {
                     let content_region = ui.content_region_avail();
 
                     if let Some(requested) = images.get(&id) {
                         if let Some((image, _)) = requested {
-                            let zoom = match zoom_status {
-                                ZoomStatus::Zoomed => (1.0
-                                    / (image.width as f32 / content_region[0])
-                                        .max(image.height as f32 / content_region[1]))
-                                .min(1.0),
-                                ZoomStatus::JustUnzoomed => 1.0,
-                                ZoomStatus::Unzoomed(level) => {
-                                    if ui.io().key_ctrl {
-                                        *level *= 0.95f32.powf(ui.io().mouse_wheel);
-                                        ui.set_scroll_x(0.5 * ui.scroll_max_x());
-                                        ui.set_scroll_y(0.5 * ui.scroll_max_y());
-                                    }
-                                    *level
-                                }
-                            };
+                            let zoom = (1.0
+                                / (image.width as f32 / content_region[0])
+                                    .max(image.height as f32 / content_region[1]))
+                            .min(1.0);
 
                             let size = [image.width as f32 * zoom, image.height as f32 * zoom];
 
-                            if matches!(zoom_status, ZoomStatus::Zoomed) {
-                                let padded = [
-                                    0.5 * (content_region[0] - size[0]) + ui.cursor_pos()[0],
-                                    0.5 * (content_region[1] - size[1]) + ui.cursor_pos()[1],
-                                ];
+                            let padded = [
+                                0.5 * (content_region[0] - size[0]) + ui.cursor_pos()[0],
+                                0.5 * (content_region[1] - size[1]) + ui.cursor_pos()[1],
+                            ];
 
-                                ui.set_cursor_pos(padded);
-                            }
+                            ui.set_cursor_pos(padded);
 
                             imgui::Image::new(image.data, size).build(ui);
-
-                            let delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 0.0);
-                            ui.reset_mouse_drag_delta(MouseButton::Right);
-
-                            if matches!(zoom_status, ZoomStatus::JustUnzoomed) {
-                                if 0.5 * ui.scroll_max_x() != 0.0 {
-                                    ui.set_scroll_x(0.5 * ui.scroll_max_x());
-                                    ui.set_scroll_y(0.5 * ui.scroll_max_y());
-                                    *zoom_status = ZoomStatus::Unzoomed(1.0);
-                                }
-                            } else {
-                                ui.set_scroll_x(ui.scroll_x() - delta[0]);
-                                ui.set_scroll_y(ui.scroll_y() - delta[1]);
-                            }
-                            if ui.is_item_clicked() {
-                                if matches!(
-                                    zoom_status,
-                                    ZoomStatus::JustUnzoomed | ZoomStatus::Unzoomed(_)
-                                ) {
-                                    *zoom_status = ZoomStatus::Zoomed;
-                                } else {
-                                    *zoom_status = ZoomStatus::JustUnzoomed;
-                                }
-                            }
                         }
                     } else {
                         images.insert(*id, None);

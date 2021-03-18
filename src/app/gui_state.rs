@@ -9,13 +9,7 @@ pub struct GuiState {
 
 pub enum MainWindow {
     Gallery,
-    Blob { id: BlobId, unzoom: ZoomStatus },
-}
-
-pub enum ZoomStatus {
-    Zoomed,
-    JustUnzoomed,
-    Unzoomed(f32),
+    Blob { id: BlobId },
 }
 
 impl Default for MainWindow {

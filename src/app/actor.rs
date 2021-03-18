@@ -9,7 +9,7 @@ use std::{
 use tokio::{runtime::Handle, sync::mpsc};
 
 use super::{
-    gui_state::{GuiState, MainWindow, ZoomStatus},
+    gui_state::{GuiState, MainWindow},
     piece_editor::PieceEditor,
 };
 
@@ -85,10 +85,7 @@ impl AppActor {
         tokio::spawn(async move {
             let mut write = this.0.write().unwrap();
 
-            write.gui_state.main_window = MainWindow::Blob {
-                id: blob_id,
-                unzoom: ZoomStatus::Zoomed,
-            };
+            write.gui_state.main_window = MainWindow::Blob { id: blob_id };
         });
     }
 }
