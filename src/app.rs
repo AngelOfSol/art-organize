@@ -8,7 +8,9 @@ use actor::Inner;
 use db::{Blob, BlobId, Tag, TagCategory};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
-use imgui::{im_str, ChildWindow, MenuItem, MouseButton, Selectable, StyleColor, Ui, Window};
+use imgui::{
+    im_str, ChildWindow, ImStr, MenuItem, MouseButton, Selectable, StyleColor, Ui, Window,
+};
 use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
@@ -69,8 +71,6 @@ impl App {
                 }
             });
         });
-
-        //let _color = ui.push_style_color(StyleColor::WindowBg, [0.067, 0.067, 0.067, 1.0]);
 
         Window::new(im_str!("Search"))
             .movable(false)
@@ -137,6 +137,7 @@ impl App {
                 }
             });
 
+        let button_size = [ui.text_line_height_with_spacing(); 2];
         Window::new(im_str!("Tags"))
             .movable(false)
             .resizable(false)
@@ -155,85 +156,50 @@ impl App {
             .build(ui, || match gui_state.main_window {
                 MainWindow::Gallery => {
                     for i in 0..10u32 {
-                        let tag = Tag {
+                        let t = Tag {
                             name: format!("tag_{}", i),
                             description: format!("My test description {}", i),
                             added: chrono::Local::now(),
                         };
-                        let tag_category = TagCategory {
-                            name: format!("category_{}", i),
-                            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-                            added: chrono::Local::now(),
-                        };
-                        let label = im_str!("{}:{}", tag_category.name, tag.name);
-                        let _id = ui.push_id(&label);
-
-                        let size = [ui.text_line_height_with_spacing(); 2];
-
-                        Selectable::new(im_str!("?")).size(size).build(ui);
-                        ui.same_line();
-                        Selectable::new(im_str!("+")).size(size).build(ui);
-                        ui.same_line();
-                        Selectable::new(im_str!("-")).size(size).build(ui);
-                        ui.same_line();
-
-                        let rect = ui.calc_text_size(&label);
-
-                        let _color = ui.push_style_color(
-                            StyleColor::Text,
-                            if true {
-                                [
-                                    tag_category.color[0] as f32 / 255.0,
-                                    tag_category.color[1] as f32 / 255.0,
-                                    tag_category.color[2] as f32 / 255.0,
-                                    tag_category.color[3] as f32 / 255.0,
-                                ]
-                            } else {
-                                ui.style_color(if ui.is_mouse_down(MouseButton::Left) {
-                                    StyleColor::ButtonActive
-                                } else {
-                                    StyleColor::ButtonHovered
-                                })
-                            },
-                        );
-                        Selectable::new(&label).build(ui);
-                    }
-                }
-                MainWindow::Blob { .. } => {
-                    let button_size = [ui.text_line_height_with_spacing(); 2];
-                    for i in 0..10u32 {
-                        let tag_category = TagCategory {
+                        let tg = TagCategory {
                             name: format!("category_{}", i),
                             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
                             added: chrono::Local::now(),
                         };
                         let raw_color = [
-                            tag_category.color[0] as f32 / 255.0,
-                            tag_category.color[1] as f32 / 255.0,
-                            tag_category.color[2] as f32 / 255.0,
-                            tag_category.color[3] as f32 / 255.0,
+                            tg.color[0] as f32 / 255.0,
+                            tg.color[1] as f32 / 255.0,
+                            tg.color[2] as f32 / 255.0,
+                            tg.color[3] as f32 / 255.0,
                         ];
 
-                        let label = im_str!("{}", tag_category.name);
+                        tag(ui, &im_str!("{}", t.name), button_size, raw_color, true);
+                    }
+                }
+                MainWindow::Blob { .. } => {
+                    for i in 0..10u32 {
+                        let tg = TagCategory {
+                            name: format!("category_{}", i),
+                            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+                            added: chrono::Local::now(),
+                        };
+                        let raw_color = [
+                            tg.color[0] as f32 / 255.0,
+                            tg.color[1] as f32 / 255.0,
+                            tg.color[2] as f32 / 255.0,
+                            tg.color[3] as f32 / 255.0,
+                        ];
 
-                        Selectable::new(im_str!("?")).size(button_size).build(ui);
-                        ui.same_line();
-                        ui.text_colored(raw_color, &label);
+                        tag_category(ui, &im_str!("{}", tg.name), button_size, raw_color);
                         ui.indent();
-                        for j in 0..3 {
-                            let tag = Tag {
+                        for j in 0..2 {
+                            let t = Tag {
                                 name: format!("tag_{}", j),
                                 description: format!("My test description {}", j),
                                 added: chrono::Local::now(),
                             };
-                            let label = im_str!("{}", tag.name);
-                            let _id = ui.push_id(&label);
-
-                            Selectable::new(im_str!("?")).size(button_size).build(ui);
-                            ui.same_line();
-
-                            let _color = ui.push_style_color(StyleColor::Text, raw_color);
-                            Selectable::new(&label).build(ui);
+                            let label = im_str!("{}", t.name);
+                            tag(ui, &label, button_size, raw_color, false);
                         }
                         ui.unindent();
                     }
@@ -242,6 +208,55 @@ impl App {
 
         ui.show_default_style_editor();
     }
+}
+
+pub enum TagResponse {
+    None,
+    Info,
+    Add,
+    AddNegated,
+    ReplaceSearch,
+}
+
+fn tag(
+    ui: &Ui,
+    label: &ImStr,
+    button_size: [f32; 2],
+    raw_color: [f32; 4],
+    show_extras: bool,
+) -> TagResponse {
+    let _id = ui.push_id(label);
+
+    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
+        return TagResponse::Info;
+    }
+    ui.same_line();
+
+    if show_extras {
+        if Selectable::new(im_str!("+")).size(button_size).build(ui) {
+            return TagResponse::Info;
+        }
+        ui.same_line();
+        if Selectable::new(im_str!("-")).size(button_size).build(ui) {
+            return TagResponse::Info;
+        }
+
+        ui.same_line();
+    }
+
+    let _color = ui.push_style_color(StyleColor::Text, raw_color);
+    if Selectable::new(&label).build(ui) {
+        TagResponse::ReplaceSearch
+    } else {
+        TagResponse::None
+    }
+}
+
+fn tag_category(ui: &Ui, label: &ImStr, button_size: [f32; 2], raw_color: [f32; 4]) -> bool {
+    let ret = Selectable::new(im_str!("?")).size(button_size).build(ui);
+    ui.same_line();
+    ui.text_colored(raw_color, label);
+    ret
 }
 
 fn render_gallery<'a, I: Iterator<Item = (BlobId, &'a Blob)>>(
