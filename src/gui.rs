@@ -190,7 +190,7 @@ impl GuiContext {
         let frame = match self.swap_chain.get_current_frame() {
             Ok(frame) => frame,
             Err(e) => {
-                //eprintln!("dropped frame: {:?}", e);
+                eprintln!("dropped frame: {:?}", e);
                 return;
             }
         };
@@ -254,9 +254,4 @@ impl GuiContext {
         texture.write(&self.queue, &raw.data, raw.width, raw.height);
         self.renderer.textures.insert(texture)
     }
-}
-
-pub struct ImageIds {
-    base: TextureId,
-    thumbnail: TextureId,
 }

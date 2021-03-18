@@ -1,6 +1,6 @@
-use crate::{backend::Backend, cli::SubCommand, raw_image::RawImage};
-use db::{BlobId, Db, Piece};
-use imgui::{im_str, TabItem, TextureId, Ui};
+use crate::{backend::DbBackend, cli::SubCommand, raw_image::RawImage};
+use db::{BlobId, Piece};
+use imgui::TextureId;
 use ipc::IpcReceiver;
 use std::{
     collections::BTreeMap,
@@ -8,15 +8,12 @@ use std::{
 };
 use tokio::{runtime::Handle, sync::mpsc};
 
-use super::{
-    gui_state::{GuiState, MainWindow},
-    piece_editor::PieceEditor,
-};
+use super::gui_state::{GuiState, MainWindow};
 
 pub struct Inner {
     pub ipc: IpcReceiver<SubCommand>,
     pub handle: Handle,
-    pub backend: Backend,
+    pub db: DbBackend,
     pub image_cache: BTreeMap<BlobId, TextureId>,
     pub outgoing_images: mpsc::Sender<(BlobId, RawImage, RawImage)>,
 
@@ -42,9 +39,9 @@ impl AppActor {
 
             let piece = Piece::default();
 
-            write.backend.db.undo_checkpoint();
+            write.db.undo_checkpoint();
 
-            let id = write.backend.db.pieces.insert(piece);
+            let _id = write.db.pieces.insert(piece);
 
             // TODO add piece to app state
         });
@@ -57,7 +54,7 @@ impl AppActor {
             let rc = {
                 let read = this.0.read().unwrap();
 
-                if let Some(raw) = read.backend.db.blobs.get(blob_id) {
+                if let Some(raw) = read.db.blobs.get(blob_id) {
                     raw.data.clone()
                 } else {
                     return;

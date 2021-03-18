@@ -8,7 +8,7 @@ use app::{
     gui_state::GuiState,
     App,
 };
-use backend::Backend;
+use backend::DbBackend;
 use clap::Clap;
 use config::Config;
 use gui::{run_event_loop, GuiContext};
@@ -64,7 +64,7 @@ async fn async_main() -> anyhow::Result<()> {
         },
         cli::SubCommand::Add { path, dir } => {
             let root = config.data_dirs[dir].clone();
-            let mut backend = Backend::from_path(root).await?;
+            let mut backend = DbBackend::from_path(root).await?;
             backend.add_file(path).await?;
         }
         cli::SubCommand::Init { path } => {
@@ -74,7 +74,7 @@ async fn async_main() -> anyhow::Result<()> {
                 config.save().unwrap();
             }
 
-            let _ = Backend::init_at_path(root).await?;
+            let _ = DbBackend::init_at_path(root).await?;
         }
         cli::SubCommand::ResetConfig => {
             config = Config::default();
@@ -82,7 +82,7 @@ async fn async_main() -> anyhow::Result<()> {
         }
         cli::SubCommand::Gui => {
             let root = config.data_dirs[0].clone();
-            let backend = Backend::from_path(root).await?;
+            let backend = DbBackend::from_path(root).await?;
             let event_loop = EventLoop::new();
 
             let (tx, rx) = mpsc::channel(4);
@@ -90,7 +90,7 @@ async fn async_main() -> anyhow::Result<()> {
             let app = App {
                 actor: Arc::new(AppActor(RwLock::new(Inner {
                     handle: Handle::current(),
-                    backend,
+                    db: backend,
                     ipc: start_server()?,
                     image_cache: Default::default(),
                     outgoing_images: tx,

@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use db::{BlobId, PieceId};
+use db::BlobId;
 
 #[derive(Default)]
 pub struct GuiState {

@@ -1,6 +1,7 @@
 use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
     path::PathBuf,
     sync::Arc,
 };
@@ -9,13 +10,26 @@ use anyhow::anyhow;
 use chrono::Local;
 use tokio::fs;
 
-use db::{Blob, BlobType, Db, MaybeBlob, Piece, PieceId};
+use db::{Blob, BlobType, Db, MaybeBlob, Piece};
 
 use crate::undo::UndoStack;
 
-pub struct Backend {
+pub struct DbBackend {
     root: PathBuf,
-    pub db: UndoStack<Db>,
+    db: UndoStack<Db>,
+}
+
+impl Deref for DbBackend {
+    type Target = UndoStack<Db>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.db
+    }
+}
+impl DerefMut for DbBackend {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.db
+    }
 }
 
 fn data_file(mut path: PathBuf) -> PathBuf {
@@ -23,7 +37,7 @@ fn data_file(mut path: PathBuf) -> PathBuf {
     path
 }
 
-impl Backend {
+impl DbBackend {
     pub async fn save(&self) -> anyhow::Result<()> {
         fs::write(
             data_file(self.root.clone()),
@@ -130,12 +144,5 @@ impl Backend {
         self.save().await?;
 
         Ok(())
-    }
-
-    pub fn query_pieces(&self) -> impl Iterator<Item = (PieceId, &Piece)> {
-        self.db.pieces.iter()
-    }
-    pub fn _query_blobs(&self) -> impl Iterator<Item = &Blob> {
-        self.db.blobs.iter().map(|(_, data)| data)
     }
 }

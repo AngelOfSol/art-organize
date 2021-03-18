@@ -5,10 +5,10 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use actor::Inner;
-use db::{Blob, BlobId, BlobType, Db};
+use db::{Blob, BlobId};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
-use imgui::{im_str, MenuItem, MouseButton, StyleColor, Ui, Window};
+use imgui::{im_str, MenuItem, StyleColor, Ui, Window};
 use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
@@ -46,9 +46,7 @@ impl App {
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
         let (mut backend, actor, images) = (self.actor.write(), &self.actor, &mut self.images);
-        let Inner {
-            backend, gui_state, ..
-        } = backend.deref_mut();
+        let Inner { db, gui_state, .. } = backend.deref_mut();
 
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), || {
@@ -58,16 +56,16 @@ impl App {
             });
             ui.menu(im_str!("Edit"), || {
                 if MenuItem::new(im_str!("Undo"))
-                    .enabled(backend.db.can_undo())
+                    .enabled(db.can_undo())
                     .build(ui)
                 {
-                    backend.db.undo();
+                    db.undo();
                 }
                 if MenuItem::new(im_str!("Redo"))
-                    .enabled(backend.db.can_redo())
+                    .enabled(db.can_redo())
                     .build(ui)
                 {
-                    backend.db.redo();
+                    db.redo();
                 }
             });
         });
@@ -101,12 +99,11 @@ impl App {
             )
             .build(ui, || match &mut gui_state.main_window {
                 MainWindow::Gallery => {
-                    let blobs = backend
-                        .db
+                    let blobs = db
                         .pieces
                         .keys()
-                        .filter_map(|id| backend.db.media.iter().find(|(piece, _)| piece == &id))
-                        .map(|(_, blob)| (*blob, &backend.db.blobs[*blob]));
+                        .filter_map(|id| db.media.iter().find(|(piece, _)| piece == &id))
+                        .map(|(_, blob)| (*blob, &db.blobs[*blob]));
 
                     if let Some(id) = render_gallery(ui, blobs, &actor, images) {
                         actor.request_show_blob(id);
