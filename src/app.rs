@@ -5,10 +5,10 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use actor::Inner;
-use db::{Blob, BlobId};
+use db::{Blob, BlobId, Tag, TagCategory};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
-use imgui::{im_str, MenuItem, StyleColor, Ui, Window};
+use imgui::{im_str, ChildWindow, MenuItem, MouseButton, Selectable, StyleColor, Ui, Window};
 use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
@@ -152,7 +152,55 @@ impl App {
                 ],
                 imgui::Condition::Always,
             )
-            .build(ui, || {});
+            .build(ui, || match gui_state.main_window {
+                MainWindow::Gallery => {
+                    for i in 0..10u32 {
+                        let tag = Tag {
+                            name: format!("tag_{}", i),
+                            description: format!("My test description {}", i),
+                            added: chrono::Local::now(),
+                        };
+                        let tag_category = TagCategory {
+                            name: format!("category_{}", i),
+                            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+                            added: chrono::Local::now(),
+                        };
+                        let label = im_str!("{}:{}", tag_category.name, tag.name);
+                        let _id = ui.push_id(&label);
+
+                        let size = [ui.text_line_height_with_spacing(); 2];
+
+                        Selectable::new(im_str!("?")).size(size).build(ui);
+                        ui.same_line();
+                        Selectable::new(im_str!("+")).size(size).build(ui);
+                        ui.same_line();
+                        Selectable::new(im_str!("-")).size(size).build(ui);
+                        ui.same_line();
+
+                        let rect = ui.calc_text_size(&label);
+
+                        let _color = ui.push_style_color(
+                            StyleColor::Text,
+                            if true {
+                                [
+                                    tag_category.color[0] as f32 / 255.0,
+                                    tag_category.color[1] as f32 / 255.0,
+                                    tag_category.color[2] as f32 / 255.0,
+                                    tag_category.color[3] as f32 / 255.0,
+                                ]
+                            } else {
+                                ui.style_color(if ui.is_mouse_down(MouseButton::Left) {
+                                    StyleColor::ButtonActive
+                                } else {
+                                    StyleColor::ButtonHovered
+                                })
+                            },
+                        );
+                        Selectable::new(&label).build(ui);
+                    }
+                }
+                MainWindow::Blob { .. } => {}
+            });
 
         ui.show_default_style_editor();
     }
