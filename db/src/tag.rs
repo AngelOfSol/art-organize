@@ -9,6 +9,7 @@ pub struct Tag {
     pub name: String,
     pub description: String,
     pub added: DateTime<Local>,
+    pub links: Vec<String>,
 }
 impl Default for Tag {
     fn default() -> Self {
@@ -16,6 +17,7 @@ impl Default for Tag {
             name: "New Tag".to_string(),
             description: String::new(),
             added: Local::now(),
+            links: Vec::new(),
         }
     }
 }

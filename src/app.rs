@@ -70,7 +70,21 @@ impl App {
                     db.redo();
                 }
             });
+            ui.menu(im_str!("Debug"), || {
+                MenuItem::new(im_str!("Styles")).build_with_ref(ui, &mut gui_state.show_styles);
+
+                MenuItem::new(im_str!("Metrics")).build_with_ref(ui, &mut gui_state.show_metrics);
+            });
         });
+
+        if gui_state.show_styles {
+            ui.show_default_style_editor();
+        }
+        if gui_state.show_metrics {
+            ui.show_metrics_window(&mut gui_state.show_metrics);
+        }
+
+        let gui_state = &*gui_state;
 
         Window::new(im_str!("Search"))
             .movable(false)
@@ -97,7 +111,7 @@ impl App {
                 ],
                 imgui::Condition::Always,
             )
-            .build(ui, || match &mut gui_state.main_window {
+            .build(ui, || match &gui_state.main_window {
                 MainWindow::Gallery => {
                     let blobs = db
                         .pieces
@@ -160,6 +174,7 @@ impl App {
                             name: format!("tag_{}", i),
                             description: format!("My test description {}", i),
                             added: chrono::Local::now(),
+                            links: Vec::new(),
                         };
                         let tg = TagCategory {
                             name: format!("category_{}", i),
@@ -197,6 +212,7 @@ impl App {
                                 name: format!("tag_{}", j),
                                 description: format!("My test description {}", j),
                                 added: chrono::Local::now(),
+                                links: Vec::new(),
                             };
                             let label = im_str!("{}", t.name);
                             tag(ui, &label, button_size, raw_color, false);
@@ -205,8 +221,6 @@ impl App {
                     }
                 }
             });
-
-        ui.show_default_style_editor();
     }
 }
 

@@ -5,6 +5,9 @@ use db::BlobId;
 #[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GuiState {
     pub main_window: MainWindow,
+
+    pub show_styles: bool,
+    pub show_metrics: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

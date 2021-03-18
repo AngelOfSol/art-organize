@@ -41,22 +41,65 @@ consider putting app_state behind a Mutex, so the gui thread can write to it
 
 put the DB behind an Arc<RwLock>?
 
-crate tab based system, where each tab is its own ui rendering and data editing.
 
-decide how often to save?
 
 undo history is saved on changes, for text boxes, its saved when item is deactivated_after_edit
+whenever undo history is saved, underlying db should also be saved
 
 
-new piece -> creates a new piece and opens an editor window for it
-you can have multiple editor windows for pieces open [use a tab system] 
-each editor window has add/remove behaviour
+piece/tag/blob data is edited inline
+associations are farmed out to message passing, so constraints can be handled
+ui state changes should be farmed out to message passing also
 
-how do blobs interact? how do tags interact?
+have to decide still on how to navigate between different view types
+[tabs? view item in menu bar? side bar like tagspaces?]
+
+also need to use a better locking scheme, so that searches can proceed unimpeded
+
+todo, consider RwLockUpgradeable from parking lot
 
 
-1) Arc<RwLock<_>> only the relevant parts of state that the UI looks at
-2) create task for handling those messages
-3) move to messaging
-4) separate channel for each task type
-5) start working into backend, to create help methods to create pieces, et.al
+tag syntax:
+tag = "tag" | "category:tag"
+
+search syntax
+search_list = item -> (" " -> item)*
+item = grouped | or_list | single
+
+single = modifiers? -> tag | date_added | price | source_type | media_type
+
+source_type = "fan" | "official" | "commission"
+media_type = "text" | "image"
+
+price = price_op -> number
+price_op = ">" | ">=" | ...
+
+date_added = date_op -> (date | date_time)
+date_op = "before" | "after" | "on"
+
+date = anything chrono can parse
+date_time = anything chrono can parse
+
+modifiers = "-" 
+
+or_list = single -> ("|" -> item)+
+
+grouped = "(" -> search_list -> ")"
+
+enum Condition {
+    And(Vec<Condition>)
+    Or(Vec<Condition>)
+    Condition {
+        negate: bool,
+        test: Test,
+    }
+}
+
+pub enum Test {
+    Tag(Option<Category>, Tag),
+    Source(SourceType),
+    Media(MediaType),
+    DateAdded(DateOp, DateTime<Local>),
+    Price(PriceOp, u32),
+}
+
