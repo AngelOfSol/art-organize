@@ -69,6 +69,7 @@ dependencies = [
  "futures-util",
  "image",
  "imgui",
+ "imgui-sys",
  "imgui-wgpu",
  "imgui-winit-support",
  "interprocess",

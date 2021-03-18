@@ -5,13 +5,14 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use actor::Inner;
-use db::{Blob, BlobId, Tag, TagCategory};
+use db::{Blob, BlobId, PieceId, Tag, TagCategory};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
 use imgui::{
     im_str, ChildWindow, ImStr, MenuItem, MouseButton, Selectable, StyleColor, Ui, Window,
 };
-use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
+use imgui_sys::{ImGuiCond_Always, ImVec2};
+use std::{collections::BTreeMap, ops::DerefMut, slice::SliceIndex, sync::Arc};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
@@ -84,8 +85,6 @@ impl App {
             ui.show_metrics_window(&mut gui_state.show_metrics);
         }
 
-        let gui_state = &*gui_state;
-
         Window::new(im_str!("Search"))
             .movable(false)
             .resizable(false)
@@ -93,7 +92,88 @@ impl App {
             .no_decoration()
             .position([0.0, MAIN_MENU_BAR_OFFSET], imgui::Condition::Always)
             .size([window.width, SEARCH_BAR_HEIGHT], imgui::Condition::Always)
-            .build(ui, || {});
+            .build(ui, || {
+                let width = ui.push_item_width(-1.0);
+                let mut buf = gui_state.search.text.clone().into();
+                if ui
+                    .input_text(im_str!("##Search Input"), &mut buf)
+                    .resize_buffer(true)
+                    .hint(im_str!("Search"))
+                    .callback_completion(true)
+                    .build()
+                {
+                    gui_state.search.text = buf.to_string();
+                };
+                drop(width);
+                if ui.is_item_focused()
+                    && !gui_state.search.text.ends_with(r"\s")
+                    && !gui_state.search.text.is_empty()
+                {
+                    unsafe {
+                        imgui_sys::igSetNextWindowPos(
+                            ui.cursor_screen_pos().into(),
+                            std::convert::TryInto::try_into(ImGuiCond_Always).unwrap(),
+                            ImVec2::new(0.0, 0.0),
+                        );
+                    }
+                    ui.tooltip(|| {
+                        if gui_state.search.auto_complete.is_empty() {
+                            gui_state.search.auto_complete = vec![
+                                "tag1".to_string(),
+                                "artist:tag1".to_string(),
+                                "tag2".to_string(),
+                                "tag3".to_string(),
+                            ];
+                        }
+                        if ui.is_key_pressed(imgui::Key::DownArrow) {
+                            match &mut gui_state.search.selected {
+                                Some(data) => {
+                                    *data += 1;
+                                    if gui_state.search.auto_complete.get(*data).is_none() {
+                                        gui_state.search.selected = None;
+                                    }
+                                }
+                                None => {
+                                    if !gui_state.search.auto_complete.is_empty() {
+                                        gui_state.search.selected = Some(0);
+                                    }
+                                }
+                            }
+                        }
+
+                        if ui.is_key_pressed(imgui::Key::UpArrow) {
+                            match &mut gui_state.search.selected {
+                                Some(data) => {
+                                    gui_state.search.selected = data.checked_sub(1);
+                                }
+                                None => {
+                                    if !gui_state.search.auto_complete.is_empty() {
+                                        gui_state.search.selected =
+                                            Some(gui_state.search.auto_complete.len() - 1);
+                                    }
+                                }
+                            }
+                        }
+
+                        if ui.is_key_pressed(imgui::Key::Tab) {
+                            if let Some(value) = dbg!(gui_state.search.selected)
+                                .and_then(|idx| dbg!(gui_state.search.auto_complete.get(idx)))
+                                .cloned()
+                            {
+                                gui_state.search.text.push_str(&value);
+                                dbg!(&gui_state.search.text);
+                            }
+                        }
+
+                        for (idx, tag) in gui_state.search.auto_complete.iter().enumerate() {
+                            Selectable::new(&im_str!("{}", tag))
+                                .selected(Some(idx) == gui_state.search.selected)
+                                .build(ui);
+                        }
+                    });
+                }
+            });
+        let gui_state = &*gui_state;
 
         Window::new(&im_str!("{}", gui_state.main_window))
             .movable(false)
@@ -117,16 +197,22 @@ impl App {
                         .pieces
                         .keys()
                         .filter_map(|id| db.media.iter().find(|(piece, _)| piece == &id))
-                        .map(|(_, blob)| (*blob, &db.blobs[*blob]));
+                        .copied();
 
                     if let Some(id) = render_gallery(ui, blobs, &actor, images) {
-                        actor.request_show_blob(id);
+                        actor.request_show_piece(id);
                     }
                 }
-                MainWindow::Blob { id } => {
+                MainWindow::Piece { id: blob_id } => {
                     let content_region = ui.content_region_avail();
 
-                    if let Some(requested) = images.get(&id) {
+                    let blob_id = db
+                        .media
+                        .iter()
+                        .find(|(piece, _)| piece == blob_id)
+                        .map(|(_, blob)| blob);
+
+                    if let Some(requested) = blob_id.and_then(|id| images.get(id)) {
                         if let Some((image, _)) = requested {
                             let zoom = (1.0
                                 / (image.width as f32 / content_region[0])
@@ -144,9 +230,9 @@ impl App {
 
                             imgui::Image::new(image.data, size).build(ui);
                         }
-                    } else {
-                        images.insert(*id, None);
-                        actor.request_load_image(*id);
+                    } else if let Some(blob_id) = blob_id {
+                        images.insert(*blob_id, None);
+                        actor.request_load_image(*blob_id);
                     }
                 }
             });
@@ -191,7 +277,22 @@ impl App {
                         tag(ui, &im_str!("{}", t.name), button_size, raw_color, true);
                     }
                 }
-                MainWindow::Blob { .. } => {
+                MainWindow::Piece { id } => {
+                    let piece = &db.pieces[id];
+
+                    ui.text(im_str!("Name: {}", piece.name));
+                    ui.text(im_str!("Added: {}", piece.added));
+                    ui.text(im_str!("Source Type: {}", piece.source_type));
+                    ui.text(im_str!("Media Type: {}", piece.media_type));
+                    if let Some(price) = piece.base_price {
+                        ui.text(im_str!("Price: ${}", price));
+                    }
+                    if let Some(price) = piece.tip_price {
+                        ui.text(im_str!("Tipped: ${}", price));
+                    }
+
+                    ui.separator();
+
                     for i in 0..10u32 {
                         let tg = TagCategory {
                             name: format!("category_{}", i),
@@ -273,22 +374,22 @@ fn tag_category(ui: &Ui, label: &ImStr, button_size: [f32; 2], raw_color: [f32; 
     ret
 }
 
-fn render_gallery<'a, I: Iterator<Item = (BlobId, &'a Blob)>>(
+fn render_gallery<I: Iterator<Item = (PieceId, BlobId)>>(
     ui: &Ui,
     blobs: I,
     actor: &Arc<AppActor>,
     images: &mut BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
-) -> Option<BlobId> {
+) -> Option<PieceId> {
     let mut ret = None;
     let content_region = [
         ui.window_content_region_max()[0] / 2.0,
         ui.window_content_region_max()[1] / 2.0,
     ];
 
-    for (id, data) in blobs {
-        if let Some(requested) = images.get(&id) {
+    for (piece, blob) in blobs {
+        if let Some(requested) = images.get(&blob) {
             if let Some((image, thumbnail)) = requested {
-                imgui::ChildWindow::new(&im_str!("##{}", data.hash))
+                imgui::ChildWindow::new(&im_str!("##{:?}", piece))
                     .size([THUMBNAIL_SIZE + IMAGE_BUFFER, THUMBNAIL_SIZE + IMAGE_BUFFER])
                     .draw_background(false)
                     .build(ui, || {
@@ -299,7 +400,7 @@ fn render_gallery<'a, I: Iterator<Item = (BlobId, &'a Blob)>>(
                         ]);
 
                         if imgui::ImageButton::new(thumbnail.data, size).build(ui) {
-                            ret = Some(id);
+                            ret = Some(piece);
                         }
 
                         if ui.is_item_hovered() {
@@ -317,8 +418,8 @@ fn render_gallery<'a, I: Iterator<Item = (BlobId, &'a Blob)>>(
                 }
             }
         } else {
-            images.insert(id, None);
-            actor.request_load_image(id);
+            images.insert(blob, None);
+            actor.request_load_image(blob);
         }
     }
     ui.new_line();

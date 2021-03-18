@@ -1,5 +1,5 @@
 use crate::{backend::DbBackend, cli::SubCommand, raw_image::RawImage};
-use db::{BlobId, Piece};
+use db::{BlobId, Piece, PieceId};
 use imgui::TextureId;
 use ipc::IpcReceiver;
 use std::{
@@ -76,13 +76,13 @@ impl AppActor {
         });
     }
 
-    pub fn request_show_blob(self: &Arc<Self>, blob_id: BlobId) {
+    pub fn request_show_piece(self: &Arc<Self>, id: PieceId) {
         let this = self.clone();
 
         tokio::spawn(async move {
             let mut write = this.0.write().unwrap();
 
-            write.gui_state.main_window = MainWindow::Blob { id: blob_id };
+            write.gui_state.main_window = MainWindow::Piece { id };
         });
     }
 }
