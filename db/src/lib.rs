@@ -32,3 +32,6 @@ pub struct Db {
     pub piece_tags: BTreeSet<(PieceId, TagId, Option<TagCategoryId>)>,
     pub blob_tags: BTreeSet<(BlobId, TagId, Option<TagCategoryId>)>,
 }
+
+// TODO implement index for all ids
+// TODO implement helper methods for db.pieces.iter() etc
