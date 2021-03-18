@@ -5,6 +5,7 @@ use std::{
 
 use app::{
     actor::{AppActor, Inner},
+    gui_state::GuiState,
     App,
 };
 use backend::Backend;
@@ -93,6 +94,7 @@ async fn async_main() -> anyhow::Result<()> {
                     ipc: start_server()?,
                     image_cache: Default::default(),
                     outgoing_images: tx,
+                    gui_state: GuiState::default(),
                 }))),
                 incoming_images: rx,
                 images: BTreeMap::new(),

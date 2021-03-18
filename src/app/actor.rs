@@ -8,7 +8,10 @@ use std::{
 };
 use tokio::{runtime::Handle, sync::mpsc};
 
-use super::piece_editor::PieceEditor;
+use super::{
+    gui_state::{GuiState, MainWindow, ZoomStatus},
+    piece_editor::PieceEditor,
+};
 
 pub struct Inner {
     pub ipc: IpcReceiver<SubCommand>,
@@ -16,6 +19,8 @@ pub struct Inner {
     pub backend: Backend,
     pub image_cache: BTreeMap<BlobId, TextureId>,
     pub outgoing_images: mpsc::Sender<(BlobId, RawImage, RawImage)>,
+
+    pub gui_state: GuiState,
 }
 
 pub struct AppActor(pub RwLock<Inner>);
@@ -71,6 +76,19 @@ impl AppActor {
             })
             .await
             .unwrap();
+        });
+    }
+
+    pub fn request_show_blob(self: &Arc<Self>, blob_id: BlobId) {
+        let this = self.clone();
+
+        tokio::spawn(async move {
+            let mut write = this.0.write().unwrap();
+
+            write.gui_state.main_window = MainWindow::Blob {
+                id: blob_id,
+                unzoom: ZoomStatus::Zoomed,
+            };
         });
     }
 }
