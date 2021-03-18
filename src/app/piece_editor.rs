@@ -4,10 +4,12 @@ use db::{Db, PieceId};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
+#[allow(dead_code)]
 pub struct PieceEditor {
     pub id: PieceId,
 }
 
+#[allow(dead_code)]
 impl PieceEditor {
     pub fn update(&mut self) {}
     pub fn label<'a>(&self, db: &'a Db) -> Option<&'a str> {

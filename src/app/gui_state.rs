@@ -2,11 +2,12 @@ use std::fmt::Display;
 
 use db::BlobId;
 
-#[derive(Default)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GuiState {
     pub main_window: MainWindow,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MainWindow {
     Gallery,
     Blob { id: BlobId },
