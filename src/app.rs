@@ -5,14 +5,12 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use actor::Inner;
-use db::{Blob, BlobId, PieceId, Tag, TagCategory};
+use db::{BlobId, PieceId, Tag, TagCategory};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
-use imgui::{
-    im_str, ChildWindow, ImStr, MenuItem, MouseButton, Selectable, StyleColor, Ui, Window,
-};
+use imgui::{im_str, ImStr, MenuItem, Selectable, StyleColor, Ui, Window};
 use imgui_sys::{ImGuiCond_Always, ImVec2};
-use std::{collections::BTreeMap, ops::DerefMut, slice::SliceIndex, sync::Arc};
+use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
@@ -99,79 +97,11 @@ impl App {
                     .input_text(im_str!("##Search Input"), &mut buf)
                     .resize_buffer(true)
                     .hint(im_str!("Search"))
-                    .callback_completion(true)
                     .build()
                 {
                     gui_state.search.text = buf.to_string();
                 };
                 drop(width);
-                if ui.is_item_focused()
-                    && !gui_state.search.text.ends_with(r"\s")
-                    && !gui_state.search.text.is_empty()
-                {
-                    unsafe {
-                        imgui_sys::igSetNextWindowPos(
-                            ui.cursor_screen_pos().into(),
-                            std::convert::TryInto::try_into(ImGuiCond_Always).unwrap(),
-                            ImVec2::new(0.0, 0.0),
-                        );
-                    }
-                    ui.tooltip(|| {
-                        if gui_state.search.auto_complete.is_empty() {
-                            gui_state.search.auto_complete = vec![
-                                "tag1".to_string(),
-                                "artist:tag1".to_string(),
-                                "tag2".to_string(),
-                                "tag3".to_string(),
-                            ];
-                        }
-                        if ui.is_key_pressed(imgui::Key::DownArrow) {
-                            match &mut gui_state.search.selected {
-                                Some(data) => {
-                                    *data += 1;
-                                    if gui_state.search.auto_complete.get(*data).is_none() {
-                                        gui_state.search.selected = None;
-                                    }
-                                }
-                                None => {
-                                    if !gui_state.search.auto_complete.is_empty() {
-                                        gui_state.search.selected = Some(0);
-                                    }
-                                }
-                            }
-                        }
-
-                        if ui.is_key_pressed(imgui::Key::UpArrow) {
-                            match &mut gui_state.search.selected {
-                                Some(data) => {
-                                    gui_state.search.selected = data.checked_sub(1);
-                                }
-                                None => {
-                                    if !gui_state.search.auto_complete.is_empty() {
-                                        gui_state.search.selected =
-                                            Some(gui_state.search.auto_complete.len() - 1);
-                                    }
-                                }
-                            }
-                        }
-
-                        if ui.is_key_pressed(imgui::Key::Tab) {
-                            if let Some(value) = dbg!(gui_state.search.selected)
-                                .and_then(|idx| dbg!(gui_state.search.auto_complete.get(idx)))
-                                .cloned()
-                            {
-                                gui_state.search.text.push_str(&value);
-                                dbg!(&gui_state.search.text);
-                            }
-                        }
-
-                        for (idx, tag) in gui_state.search.auto_complete.iter().enumerate() {
-                            Selectable::new(&im_str!("{}", tag))
-                                .selected(Some(idx) == gui_state.search.selected)
-                                .build(ui);
-                        }
-                    });
-                }
             });
         let gui_state = &*gui_state;
 
