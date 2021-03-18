@@ -101,6 +101,17 @@ impl<T> Table<T> {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (TableId<T>, &mut T)> {
         self.data.iter_mut().map(|(id, value)| (id.into(), value))
     }
+
+    pub fn values(&self) -> impl Iterator<Item = &T> {
+        self.data.iter().map(|(_, value)| value)
+    }
+    pub fn values_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.data.iter_mut().map(|(_, value)| value)
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = TableId<T>> + '_ {
+        self.data.iter().map(|(id, _)| id.into())
+    }
 }
 
 impl<'de, T: Deserialize<'de>> Deserialize<'de> for Table<T> {

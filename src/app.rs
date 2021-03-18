@@ -5,7 +5,7 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use actor::Inner;
-use db::{BlobId, BlobType, Db};
+use db::{Blob, BlobId, BlobType, Db};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
 use imgui::{im_str, MenuItem, MouseButton, StyleColor, Ui, Window};
@@ -100,7 +100,18 @@ impl App {
                 imgui::Condition::Always,
             )
             .build(ui, || match &mut gui_state.main_window {
-                MainWindow::Gallery => render_gallery(ui, &backend.db, &actor, images),
+                MainWindow::Gallery => {
+                    let blobs = backend
+                        .db
+                        .pieces
+                        .keys()
+                        .filter_map(|id| backend.db.media.iter().find(|(piece, _)| piece == &id))
+                        .map(|(_, blob)| (*blob, &backend.db.blobs[*blob]));
+
+                    if let Some(id) = render_gallery(ui, blobs, &actor, images) {
+                        actor.request_show_blob(id);
+                    }
+                }
                 MainWindow::Blob { id } => {
                     let content_region = ui.content_region_avail();
 
@@ -150,22 +161,19 @@ impl App {
     }
 }
 
-fn render_gallery(
+fn render_gallery<'a, I: Iterator<Item = (BlobId, &'a Blob)>>(
     ui: &Ui,
-    db: &Db,
+    blobs: I,
     actor: &Arc<AppActor>,
     images: &mut BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
-) {
+) -> Option<BlobId> {
+    let mut ret = None;
     let content_region = [
         ui.window_content_region_max()[0] / 2.0,
         ui.window_content_region_max()[1] / 2.0,
     ];
 
-    for (id, data) in db
-        .blobs
-        .iter()
-        .filter(|(_, blob)| blob.blob_type == BlobType::Canon)
-    {
+    for (id, data) in blobs {
         if let Some(requested) = images.get(&id) {
             if let Some((image, thumbnail)) = requested {
                 imgui::ChildWindow::new(&im_str!("##{}", data.hash))
@@ -179,7 +187,7 @@ fn render_gallery(
                         ]);
 
                         if imgui::ImageButton::new(thumbnail.data, size).build(ui) {
-                            actor.request_show_blob(id);
+                            ret = Some(id);
                         }
 
                         if ui.is_item_hovered() {
@@ -202,6 +210,8 @@ fn render_gallery(
         }
     }
     ui.new_line();
+
+    ret
 }
 fn rescale(image: &TextureImage, max_size: [f32; 2]) -> ([f32; 2], [f32; 2]) {
     rescale_with_zoom(image, max_size, 1.0)
