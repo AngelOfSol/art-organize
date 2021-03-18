@@ -70,7 +70,7 @@ impl App {
             });
         });
 
-        let _color = ui.push_style_color(StyleColor::WindowBg, [0.067, 0.067, 0.067, 1.0]);
+        //let _color = ui.push_style_color(StyleColor::WindowBg, [0.067, 0.067, 0.067, 1.0]);
 
         Window::new(im_str!("Search"))
             .movable(false)
@@ -199,7 +199,45 @@ impl App {
                         Selectable::new(&label).build(ui);
                     }
                 }
-                MainWindow::Blob { .. } => {}
+                MainWindow::Blob { .. } => {
+                    let button_size = [ui.text_line_height_with_spacing(); 2];
+                    for i in 0..10u32 {
+                        let tag_category = TagCategory {
+                            name: format!("category_{}", i),
+                            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+                            added: chrono::Local::now(),
+                        };
+                        let raw_color = [
+                            tag_category.color[0] as f32 / 255.0,
+                            tag_category.color[1] as f32 / 255.0,
+                            tag_category.color[2] as f32 / 255.0,
+                            tag_category.color[3] as f32 / 255.0,
+                        ];
+
+                        let label = im_str!("{}", tag_category.name);
+
+                        Selectable::new(im_str!("?")).size(button_size).build(ui);
+                        ui.same_line();
+                        ui.text_colored(raw_color, &label);
+                        ui.indent();
+                        for j in 0..3 {
+                            let tag = Tag {
+                                name: format!("tag_{}", j),
+                                description: format!("My test description {}", j),
+                                added: chrono::Local::now(),
+                            };
+                            let label = im_str!("{}", tag.name);
+                            let _id = ui.push_id(&label);
+
+                            Selectable::new(im_str!("?")).size(button_size).build(ui);
+                            ui.same_line();
+
+                            let _color = ui.push_style_color(StyleColor::Text, raw_color);
+                            Selectable::new(&label).build(ui);
+                        }
+                        ui.unindent();
+                    }
+                }
             });
 
         ui.show_default_style_editor();
