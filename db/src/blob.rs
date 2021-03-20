@@ -1,9 +1,10 @@
-use std::sync::Arc;
+use std::{fmt::Display, sync::Arc};
 
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 
 use crate::table::{MaybeEntry, TableId};
+use strum::EnumIter;
 
 pub type BlobId = TableId<Blob>;
 pub type MaybeBlob = MaybeEntry<Blob>;
@@ -39,10 +40,33 @@ mod raw_data {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, EnumIter)]
 pub enum BlobType {
     Canon,
     Variant,
     Raw,
     Draft,
+}
+
+impl Display for BlobType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                BlobType::Canon => {
+                    "Canon"
+                }
+                BlobType::Variant => {
+                    "Variant"
+                }
+                BlobType::Raw => {
+                    "Raw"
+                }
+                BlobType::Draft => {
+                    "Draft"
+                }
+            }
+        )
+    }
 }

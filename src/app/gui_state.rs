@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use db::PieceId;
+use db::{BlobId, PieceId};
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GuiState {
@@ -21,7 +21,11 @@ pub struct SearchState {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MainWindow {
     Gallery,
-    Piece { id: PieceId },
+    Piece {
+        id: PieceId,
+        edit: bool,
+        focused: Option<BlobId>,
+    },
 }
 
 impl Default for MainWindow {

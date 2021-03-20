@@ -9,7 +9,7 @@ pub use self::{
 };
 use self::{tag::TagId, tag_category::TagCategoryId};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use table::Table;
 
 mod blob;
@@ -29,8 +29,8 @@ pub struct Db {
     pub tag_categories: Table<TagCategory>,
 
     pub media: BTreeSet<(PieceId, BlobId)>,
-    pub piece_tags: BTreeSet<(PieceId, TagId, Option<TagCategoryId>)>,
-    pub blob_tags: BTreeSet<(BlobId, TagId, Option<TagCategoryId>)>,
+    pub piece_tags: BTreeSet<(PieceId, TagId)>,
+    pub tag_category: BTreeMap<TagId, TagCategoryId>,
 }
 
 // TODO implement index for all ids

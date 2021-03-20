@@ -12,6 +12,17 @@ pub struct TagCategory {
     pub added: DateTime<Local>,
 }
 
+impl TagCategory {
+    pub fn raw_color(&self) -> [f32; 4] {
+        [
+            self.color[0] as f32 / 255.0,
+            self.color[1] as f32 / 255.0,
+            self.color[2] as f32 / 255.0,
+            self.color[3] as f32 / 255.0,
+        ]
+    }
+}
+
 impl Default for TagCategory {
     fn default() -> Self {
         Self {

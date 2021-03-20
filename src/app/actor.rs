@@ -76,13 +76,44 @@ impl AppActor {
         });
     }
 
-    pub fn request_show_piece(self: &Arc<Self>, id: PieceId) {
+    pub fn request_show_piece<I: Into<ShowPieceRequest>>(self: &Arc<Self>, id: I) {
+        let id = id.into();
         let this = self.clone();
 
         tokio::spawn(async move {
             let mut write = this.0.write().unwrap();
 
-            write.gui_state.main_window = MainWindow::Piece { id };
+            write.gui_state.main_window = MainWindow::Piece {
+                id: {
+                    match id {
+                        ShowPieceRequest::Piece(id) => id,
+                        ShowPieceRequest::Blob(id) => {
+                            match write.db.media.iter().find(|(_, blob)| *blob == id) {
+                                Some((id, _)) => *id,
+                                None => return,
+                            }
+                        }
+                    }
+                },
+                edit: false,
+                focused: None,
+            };
         });
+    }
+}
+
+pub enum ShowPieceRequest {
+    Piece(PieceId),
+    Blob(BlobId),
+}
+
+impl From<PieceId> for ShowPieceRequest {
+    fn from(value: PieceId) -> Self {
+        Self::Piece(value)
+    }
+}
+impl From<BlobId> for ShowPieceRequest {
+    fn from(value: BlobId) -> Self {
+        Self::Blob(value)
     }
 }
