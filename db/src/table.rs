@@ -68,6 +68,7 @@ impl<T> Index<TableId<T>> for Table<T> {
     }
 }
 
+#[allow(dead_code)]
 impl<T> Table<T> {
     pub fn check<F: Fn(&T, &T) -> bool>(&self, data: T, f: F) -> MaybeEntry<T> {
         if let Some((id, _)) = self.data.iter().find(|(_, item)| f(*item, &data)) {

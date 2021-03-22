@@ -15,10 +15,7 @@ use cli::SubCommand;
 use config::Config;
 use gui::{run_event_loop, GuiContext};
 use ipc::start_server;
-use tokio::{
-    runtime::{Builder, Handle},
-    sync::mpsc,
-};
+use tokio::{runtime::Builder, sync::mpsc};
 use winit::event_loop::EventLoop;
 
 mod app;
@@ -91,7 +88,7 @@ async fn async_main() -> anyhow::Result<()> {
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
             let gui_state = Arc::new(RwLock::new(GuiState::default()));
 
-            let ipc = start_server::<SubCommand>()?;
+            let _ipc = start_server::<SubCommand>()?;
 
             let db_handle = start_db_task(db);
             let gui_handle = start_gui_task(db_handle.clone(), gui_state.clone(), outgoing_images);

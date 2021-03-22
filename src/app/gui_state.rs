@@ -65,7 +65,7 @@ pub fn start_gui_task(
 ) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
-    tokio::spawn(gui_actor(rx, db.clone(), gui_state, outgoing_images));
+    tokio::spawn(gui_actor(rx, db, gui_state, outgoing_images));
 
     GuiHandle { outgoing: tx }
 }

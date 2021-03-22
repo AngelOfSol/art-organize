@@ -3,17 +3,14 @@ use std::{
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use anyhow::anyhow;
 use chrono::Local;
-use tokio::{fs, sync::mpsc};
+use tokio::fs;
 
-use db::{
-    commands::{AttachBlob, EditPiece},
-    Blob, BlobType, Db, MaybeBlob, Piece, PieceId,
-};
+use db::{commands::AttachBlob, Blob, BlobType, Db, MaybeBlob, Piece};
 
 pub mod actor;
 

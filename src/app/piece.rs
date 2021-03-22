@@ -4,9 +4,7 @@ use db::{commands::EditPiece, Db, Piece, PieceId, Tag, TagCategory};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
-use crate::{app::tag, undo::UndoStack};
-
-pub enum Response {}
+use crate::app::tag;
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -170,12 +168,6 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
             added: chrono::Local::now(),
         };
-        let raw_color = [
-            tg.color[0] as f32 / 255.0,
-            tg.color[1] as f32 / 255.0,
-            tg.color[2] as f32 / 255.0,
-            tg.color[3] as f32 / 255.0,
-        ];
 
         for j in 0..2 {
             let t = Tag {
@@ -184,7 +176,6 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
                 added: chrono::Local::now(),
                 links: Vec::new(),
             };
-            let label = im_str!("{}:{}", tg.name, t.name);
             tag::edit(ui, &t, &tg);
         }
     }

@@ -1,7 +1,4 @@
-use std::{
-    cell::Cell,
-    ops::{Deref, DerefMut},
-};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone)]
 pub struct UndoStack<T> {

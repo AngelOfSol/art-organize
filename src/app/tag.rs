@@ -1,5 +1,5 @@
 use db::{Tag, TagCategory};
-use imgui::{im_str, ImStr, Selectable, StyleColor, Ui};
+use imgui::{im_str, Selectable, StyleColor, Ui};
 
 pub enum TagResponse {
     None,

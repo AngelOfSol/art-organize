@@ -1,31 +1,26 @@
 use self::gui_state::{GuiHandle, GuiState};
 use crate::layout::{Column, Dimension, LayoutIds, LayoutRectangle, Row};
-use crate::{
-    backend::{actor::DbHandle, DbBackend},
-    consts::*,
-};
+use crate::{backend::actor::DbHandle, consts::*};
 use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
 };
-use db::{BlobId, BlobType, PieceId, Tag, TagCategory};
+use db::{BlobId, BlobType, Tag, TagCategory};
 use futures_util::FutureExt;
 use glam::Vec2;
 use gui_state::MainWindow;
 use imgui::{
-    im_str, ChildWindow, CollapsingHeader, ImStr, Key, MenuItem, MouseButton, Selectable,
-    StyleColor, Ui, Window,
+    im_str, ChildWindow, CollapsingHeader, ImStr, Key, MenuItem, MouseButton, Selectable, Ui,
+    Window,
 };
 use std::{
     collections::{BTreeMap, HashMap},
-    ops::DerefMut,
     sync::{Arc, RwLock},
 };
 use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
-pub mod actor;
 pub mod blob;
 pub mod gui_state;
 pub mod piece;
