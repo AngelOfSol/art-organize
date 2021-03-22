@@ -1,4 +1,5 @@
 use self::gui_state::{GuiHandle, GuiState};
+use crate::layout::{Column, Dimension, LayoutIds, LayoutRectangle, Row};
 use crate::{
     backend::{actor::DbHandle, DbBackend},
     consts::*,
@@ -9,13 +10,14 @@ use crate::{
 };
 use db::{BlobId, BlobType, PieceId, Tag, TagCategory};
 use futures_util::FutureExt;
+use glam::Vec2;
 use gui_state::MainWindow;
 use imgui::{
     im_str, ChildWindow, CollapsingHeader, ImStr, Key, MenuItem, MouseButton, Selectable,
     StyleColor, Ui, Window,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     ops::DerefMut,
     sync::{Arc, RwLock},
 };
@@ -24,6 +26,7 @@ use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
 pub mod actor;
+pub mod blob;
 pub mod gui_state;
 pub mod piece;
 pub mod tag;
@@ -32,7 +35,7 @@ pub struct App {
     pub handle: DbHandle,
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
-    pub incoming_images: mpsc::Receiver<(BlobId, RawImage, RawImage)>,
+    pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, RawImage)>,
     pub images: BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
 }
 
@@ -55,11 +58,36 @@ impl App {
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
-        let db = self.handle.read().unwrap();
-        let handle = &self.handle;
-        let images = &mut self.images;
         let mut gui_state = self.gui_state.write().unwrap();
+        let images = &mut self.images;
+
+        let db = self.handle.read().unwrap();
+
+        let handle = &self.handle;
         let gui_handle = &self.gui_handle;
+
+        let layout = {
+            let mut layout_data = HashMap::new();
+            let layout = Column::default()
+                .push(LayoutIds::MenuBar, Dimension::Pixels(20.0))
+                .push(LayoutIds::SearchBar, Dimension::Pixels(40.0))
+                .push(
+                    Row::default()
+                        .push(LayoutIds::Tags, Dimension::Pixels(240.0))
+                        .push(LayoutIds::Main, Dimension::Flex(1.0)),
+                    Dimension::Flex(1.0),
+                );
+
+            layout.layout(
+                LayoutRectangle {
+                    position: Vec2::ZERO,
+                    size: Vec2::new(window.width, window.height),
+                },
+                &mut layout_data,
+            );
+
+            layout_data
+        };
 
         if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
             handle.undo();
@@ -71,7 +99,7 @@ impl App {
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), || {
                 if MenuItem::new(im_str!("New Piece")).build(ui) {
-                    // actor.request_new_piece();
+                    gui_handle.request_new_piece();
                 }
             });
             ui.menu(im_str!("Edit"), || {
@@ -109,8 +137,14 @@ impl App {
             .resizable(false)
             .collapsible(false)
             .no_decoration()
-            .position([0.0, MAIN_MENU_BAR_OFFSET], imgui::Condition::Always)
-            .size([window.width, SEARCH_BAR_HEIGHT], imgui::Condition::Always)
+            .position(
+                layout[&LayoutIds::SearchBar].position.into(),
+                imgui::Condition::Always,
+            )
+            .size(
+                layout[&LayoutIds::SearchBar].size.into(),
+                imgui::Condition::Always,
+            )
             .build(ui, || {
                 let width = ui.push_item_width(-1.0);
                 let mut buf = gui_state.search.text.clone().into();
@@ -131,14 +165,11 @@ impl App {
             .collapsible(false)
             .scroll_bar(false)
             .position(
-                [EXPLORER_WIDTH, MAIN_MENU_BAR_OFFSET + SEARCH_BAR_HEIGHT],
+                layout[&LayoutIds::Main].position.into(),
                 imgui::Condition::Always,
             )
             .size(
-                [
-                    window.width - EXPLORER_WIDTH,
-                    window.height - MAIN_MENU_BAR_OFFSET - SEARCH_BAR_HEIGHT,
-                ],
+                layout[&LayoutIds::Main].size.into(),
                 imgui::Condition::Always,
             )
             .build(ui, || match &mut gui_state.main_window {
@@ -147,7 +178,10 @@ impl App {
                         .pieces()
                         .filter_map(|(id, _)| db.blobs_for_piece(id).next());
 
-                    if let Some(id) = render_gallery(ui, blobs, images) {
+                    if let Some(id) = render_gallery(ui, blobs, &gui_handle, images, |blob, ui| {
+                        let piece_id = db.pieces_for_blob(blob).next().unwrap();
+                        piece::view(piece_id, &db, ui);
+                    }) {
                         gui_handle.request_view_piece(db.pieces_for_blob(id).next().unwrap());
                     }
                 }
@@ -177,7 +211,7 @@ impl App {
                                 }
                             } else if !images.contains_key(blob_id) {
                                 images.insert(*blob_id, None);
-                                // actor.request_load_image(*blob_id);
+                                gui_handle.request_load_image(*blob_id);
                             }
                         }
                         None => {
@@ -195,7 +229,11 @@ impl App {
                                             blob_ids
                                                 .clone()
                                                 .filter(|blob| db[*blob].blob_type == blob_type),
+                                            &gui_handle,
                                             images,
+                                            |blob_id, ui| {
+                                                blob::view(blob_id, &db, ui);
+                                            },
                                         ) {
                                             *focused = Some(to_focus);
                                         }
@@ -252,34 +290,6 @@ impl App {
                             }
                         }
                     }
-                    // let blob_id = db
-                    //     .media
-                    //     .iter()
-                    //     .find(|(piece, _)| piece == id)
-                    //     .map(|(_, blob)| blob);
-
-                    // if let Some(requested) = blob_id.and_then(|blob_id| images.get(blob_id)) {
-                    //     if let Some((image, _)) = requested {
-                    //         let zoom = (1.0
-                    //             / (image.width as f32 / content_region[0])
-                    //                 .max(image.height as f32 / content_region[1]))
-                    //         .min(1.0);
-
-                    //         let size = [image.width as f32 * zoom, image.height as f32 * zoom];
-
-                    //         let padded = [
-                    //             0.5 * (content_region[0] - size[0]) + ui.cursor_pos()[0],
-                    //             0.5 * (content_region[1] - size[1]) + ui.cursor_pos()[1],
-                    //         ];
-
-                    //         ui.set_cursor_pos(padded);
-
-                    //         imgui::Image::new(image.data, size).build(ui);
-                    //     }
-                    // } else if let Some(blob_id) = blob_id {
-                    //     images.insert(*blob_id, None);
-                    //     actor.request_load_image(*blob_id);
-                    // }
                 }
             });
 
@@ -288,14 +298,11 @@ impl App {
             .resizable(false)
             .collapsible(true)
             .position(
-                [0.0, MAIN_MENU_BAR_OFFSET + SEARCH_BAR_HEIGHT],
+                layout[&LayoutIds::Tags].position.into(),
                 imgui::Condition::Always,
             )
             .size(
-                [
-                    EXPLORER_WIDTH,
-                    window.height - MAIN_MENU_BAR_OFFSET - SEARCH_BAR_HEIGHT,
-                ],
+                layout[&LayoutIds::Tags].size.into(),
                 imgui::Condition::Always,
             )
             .build(ui, || match &mut gui_state.main_window {
@@ -323,7 +330,7 @@ impl App {
                         *edit = !*edit;
                     }
                     if !*edit {
-                        piece::view(*piece_id, &db, ui);
+                        piece::view_with_tags(*piece_id, &db, ui);
                     } else if let Some(edit) = piece::edit(*piece_id, &db, ui) {
                         self.handle.update_piece(edit);
                     }
@@ -341,20 +348,18 @@ pub fn tag_category(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
     ret
 }
 
-fn render_gallery<I: Iterator<Item = BlobId>>(
+fn render_gallery<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
     ui: &Ui,
     blobs: I,
+    gui_handle: &GuiHandle,
     images: &mut BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
+    tooltip: F,
 ) -> Option<BlobId> {
     let mut ret = None;
-    let content_region = [
-        ui.window_content_region_max()[0] / 2.0,
-        ui.window_content_region_max()[1] / 2.0,
-    ];
 
     for blob in blobs {
         if let Some(requested) = images.get(&blob) {
-            if let Some((image, thumbnail)) = requested {
+            if let Some((_, thumbnail)) = requested {
                 imgui::ChildWindow::new(&im_str!("##{:?}", blob))
                     .size([THUMBNAIL_SIZE + IMAGE_BUFFER, THUMBNAIL_SIZE + IMAGE_BUFFER])
                     .draw_background(false)
@@ -371,7 +376,7 @@ fn render_gallery<I: Iterator<Item = BlobId>>(
 
                         if ui.is_item_hovered() {
                             ui.tooltip(|| {
-                                ui.text(im_str!("Piece Name Here"));
+                                tooltip(blob, ui);
                             });
                         }
                     });
@@ -383,7 +388,7 @@ fn render_gallery<I: Iterator<Item = BlobId>>(
             }
         } else {
             images.insert(blob, None);
-            // actor.request_load_image(blob);
+            gui_handle.request_load_image(blob);
         }
     }
     ui.new_line();

@@ -27,6 +27,7 @@ mod cli;
 mod config;
 mod consts;
 mod gui;
+mod layout;
 mod loaders;
 mod raw_image;
 mod style;
@@ -84,6 +85,7 @@ async fn async_main() -> anyhow::Result<()> {
             config.save()?;
         }
         cli::SubCommand::Gui => {
+            let (outgoing_images, rx) = mpsc::unbounded_channel();
             let root = config.data_dirs[0].clone();
 
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
@@ -92,11 +94,9 @@ async fn async_main() -> anyhow::Result<()> {
             let ipc = start_server::<SubCommand>()?;
 
             let db_handle = start_db_task(db);
-            let gui_handle = start_gui_task(db_handle.clone(), gui_state.clone());
+            let gui_handle = start_gui_task(db_handle.clone(), gui_state.clone(), outgoing_images);
 
             let event_loop = EventLoop::new();
-
-            let (outgoing_images, rx) = mpsc::channel(4);
 
             let app = App {
                 handle: db_handle,

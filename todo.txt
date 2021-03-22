@@ -38,9 +38,11 @@ categories have:
 
 - implement multiple blob view for pieces
     - click to zoom
-- implement double-right click back and forth navigation
-
+- implement double-right click back and forth navigation 
 - implement saving data to disk
+- move to message passing system
+    ? still debating how to handle gui state, given some of it may make more sense to do later
+
 - implement saving images to files on disk rather than storing in one file
 - implement adding blobs via an Add button in each category
 - implement left right navigation when zoomed in on a blob

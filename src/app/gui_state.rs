@@ -6,7 +6,7 @@ use std::{
 use db::{BlobId, PieceId};
 use tokio::sync::mpsc;
 
-use crate::backend::actor::DbHandle;
+use crate::{backend::actor::DbHandle, raw_image::RawImage};
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GuiState {
@@ -37,6 +37,7 @@ pub enum MainWindow {
 #[derive(Debug)]
 pub enum GuiAction {
     ViewPiece(PieceId),
+    LoadBlob(BlobId),
     NewPiece,
 }
 
@@ -51,12 +52,20 @@ impl GuiHandle {
     pub fn request_view_piece(&self, id: PieceId) {
         self.outgoing.send(GuiAction::ViewPiece(id)).unwrap();
     }
+
+    pub fn request_load_image(&self, blob_id: BlobId) {
+        self.outgoing.send(GuiAction::LoadBlob(blob_id)).unwrap();
+    }
 }
 
-pub fn start_gui_task(db: DbHandle, gui_state: Arc<RwLock<GuiState>>) -> GuiHandle {
+pub fn start_gui_task(
+    db: DbHandle,
+    gui_state: Arc<RwLock<GuiState>>,
+    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, RawImage)>,
+) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
-    tokio::spawn(gui_actor(rx, db.clone(), gui_state));
+    tokio::spawn(gui_actor(rx, db.clone(), gui_state, outgoing_images));
 
     GuiHandle { outgoing: tx }
 }
@@ -65,6 +74,7 @@ async fn gui_actor(
     mut incoming: mpsc::UnboundedReceiver<GuiAction>,
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
+    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, RawImage)>,
 ) {
     while let Some(action) = incoming.recv().await {
         match action {
@@ -84,6 +94,20 @@ async fn gui_actor(
                     edit: false,
                     focused: None,
                 }
+            }
+            GuiAction::LoadBlob(blob_id) => {
+                let rc = {
+                    let read = db.read().unwrap();
+
+                    read[blob_id].data.clone()
+                };
+                let outgoing_images = outgoing_images.clone();
+
+                tokio::task::spawn_blocking(move || {
+                    if let Ok((raw, thumbnail)) = RawImage::make(&rc) {
+                        outgoing_images.send((blob_id, raw, thumbnail)).unwrap();
+                    }
+                });
             }
         }
     }

@@ -23,6 +23,10 @@ pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     if let Some(price) = piece.tip_price {
         ui.text(im_str!("Tipped: ${}", price));
     }
+}
+
+pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
+    view(piece_id, db, ui);
 
     ui.separator();
 
