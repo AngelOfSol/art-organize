@@ -3,36 +3,42 @@ use std::{
     hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     path::PathBuf,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use anyhow::anyhow;
 use chrono::Local;
-use tokio::fs;
+use tokio::{fs, sync::mpsc};
 
-use db::{Blob, BlobType, Db, MaybeBlob, Piece};
+use db::{
+    commands::{AttachBlob, EditPiece},
+    Blob, BlobType, Db, MaybeBlob, Piece, PieceId,
+};
+
+pub mod actor;
 
 use crate::undo::UndoStack;
 
+#[derive(Clone)]
 pub struct DbBackend {
-    root: PathBuf,
-    db: UndoStack<Db>,
+    pub root: PathBuf,
+    pub inner: UndoStack<Db>,
 }
 
 impl Deref for DbBackend {
     type Target = UndoStack<Db>;
 
     fn deref(&self) -> &Self::Target {
-        &self.db
+        &self.inner
     }
 }
 impl DerefMut for DbBackend {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.db
+        &mut self.inner
     }
 }
 
-fn data_file(mut path: PathBuf) -> PathBuf {
+pub fn data_file(mut path: PathBuf) -> PathBuf {
     path.push("data.aodb");
     path
 }
@@ -41,7 +47,7 @@ impl DbBackend {
     pub async fn save(&self) -> anyhow::Result<()> {
         fs::write(
             data_file(self.root.clone()),
-            bincode::serialize::<Db>(&self.db)?,
+            bincode::serialize::<Db>(self)?,
         )
         .await?;
         Ok(())
@@ -51,7 +57,7 @@ impl DbBackend {
         let db = bincode::deserialize::<Db>(&fs::read(data_file(root.clone())).await?)?;
         Ok(Self {
             root,
-            db: UndoStack::new(db),
+            inner: UndoStack::new(db),
         })
     }
 
@@ -59,7 +65,7 @@ impl DbBackend {
         let db = Db::default();
         let ret = Self {
             root,
-            db: UndoStack::new(db),
+            inner: UndoStack::new(db),
         };
 
         ret.save().await?;
@@ -80,12 +86,10 @@ impl DbBackend {
         let hash = hasher.finish();
 
         let blob_id = self
-            .db
-            .blobs
-            .iter()
+            .blobs()
             .find(|(_, blob)| blob.hash == hash)
             .map(|(id, _)| id)
-            .filter(|id| self.db.blobs[*id].data == data);
+            .filter(|id| self.inner[*id].data == data);
 
         if let Some(blob_id) = blob_id {
             Ok(MaybeBlob::Id(blob_id))
@@ -111,7 +115,7 @@ impl DbBackend {
             ..Piece::default()
         };
 
-        let piece_id = self.db.pieces.insert(piece);
+        let piece_id = self.create_piece(piece);
 
         let data = Arc::new(fs::read(&file).await?);
 
@@ -120,26 +124,28 @@ impl DbBackend {
         let hash = hasher.finish();
 
         let blob_id = self
-            .db
-            .blobs
-            .iter()
+            .blobs()
             .find(|(_, blob)| blob.hash == hash)
             .map(|(id, _)| id)
-            .filter(|id| self.db.blobs[*id].data == data);
+            .filter(|id| self.inner[*id].data == data);
 
         let blob_id = if let Some(blob_id) = blob_id {
             blob_id
         } else {
-            self.db.blobs.insert(Blob {
-                file_name: file_name.to_string(),
-                hash,
-                data,
-                blob_type: BlobType::Canon,
-                added: Local::now(),
-            })
+            // self.blobs.insert(Blob {
+            //     file_name: file_name.to_string(),
+            //     hash,
+            //     data,
+            //     blob_type: BlobType::Canon,
+            //     added: Local::now(),
+            // })
+            panic!()
         };
 
-        self.db.media.insert((piece_id, blob_id));
+        self.inner.attach_blob(AttachBlob {
+            src: piece_id,
+            dest: blob_id,
+        });
 
         self.save().await?;
 

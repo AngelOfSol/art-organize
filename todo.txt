@@ -39,6 +39,7 @@ categories have:
 - implement multiple blob view for pieces
     - click to zoom
 - implement double-right click back and forth navigation
+
 - implement saving data to disk
 - implement saving images to files on disk rather than storing in one file
 - implement adding blobs via an Add button in each category

@@ -10,7 +10,7 @@ use app::{
     gui_state::GuiState,
     App,
 };
-use backend::DbBackend;
+use backend::{actor::start_db_task, DbBackend};
 use clap::Clap;
 use config::Config;
 use gui::{run_event_loop, GuiContext};
@@ -43,6 +43,7 @@ async fn async_main() -> anyhow::Result<()> {
         config
     } else {
         let config = Config::default();
+
         config.save().unwrap();
         config
     };
@@ -84,17 +85,20 @@ async fn async_main() -> anyhow::Result<()> {
         }
         cli::SubCommand::Gui => {
             let root = config.data_dirs[0].clone();
-            let backend = DbBackend::from_path(root).await?;
+            let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
+
+            let handle = start_db_task(db.clone());
+
             let event_loop = EventLoop::new();
 
             let (tx, rx) = mpsc::channel(4);
 
             let app = App {
+                db,
+                handle,
                 actor: Arc::new(AppActor(RwLock::new(Inner {
                     handle: Handle::current(),
-                    db: backend,
                     ipc: start_server()?,
-                    image_cache: Default::default(),
                     outgoing_images: tx,
                     gui_state: GuiState::default(),
                 }))),

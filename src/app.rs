@@ -1,5 +1,8 @@
 use self::actor::AppActor;
-use crate::consts::*;
+use crate::{
+    backend::{actor::DbHandle, DbBackend},
+    consts::*,
+};
 use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
@@ -12,9 +15,12 @@ use imgui::{
     im_str, ChildWindow, CollapsingHeader, ImStr, Key, MenuItem, MouseButton, Selectable,
     StyleColor, Ui, Window,
 };
-use std::{collections::BTreeMap, ops::DerefMut, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    ops::DerefMut,
+    sync::{Arc, RwLock},
+};
 use strum::IntoEnumIterator;
-use tag::ExtraType;
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
@@ -24,6 +30,8 @@ pub mod piece;
 pub mod tag;
 
 pub struct App {
+    pub handle: DbHandle,
+    pub db: Arc<RwLock<DbBackend>>,
     pub actor: Arc<AppActor>,
     pub incoming_images: mpsc::Receiver<(BlobId, RawImage, RawImage)>,
     pub images: BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
@@ -32,7 +40,6 @@ pub struct App {
 impl App {
     pub fn update(&mut self, gui: &mut GuiContext) {
         let mut backend = self.actor.write();
-        let Inner { .. } = backend.deref_mut();
 
         if let Some(Some((blob_id, raw, thumbnail))) = self.incoming_images.recv().now_or_never() {
             let image = TextureImage {
@@ -51,20 +58,24 @@ impl App {
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
-        let (mut backend, actor, images) = (self.actor.write(), &self.actor, &mut self.images);
-        let Inner { db, gui_state, .. } = backend.deref_mut();
+        let db = self.db.read().unwrap();
+        let handle = &self.handle;
+        let mut backend = self.actor.write();
+        let actor = &self.actor;
+        let images = &mut self.images;
+        let Inner { gui_state, .. } = backend.deref_mut();
 
         if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
-            db.undo();
+            handle.undo();
         }
         if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
-            db.redo();
+            handle.redo();
         }
 
         ui.main_menu_bar(|| {
             ui.menu(im_str!("File"), || {
                 if MenuItem::new(im_str!("New Piece")).build(ui) {
-                    actor.request_new_piece();
+                    // actor.request_new_piece();
                 }
             });
             ui.menu(im_str!("Edit"), || {
@@ -73,14 +84,14 @@ impl App {
                     .shortcut(im_str!("Ctrl+Z"))
                     .build(ui)
                 {
-                    db.undo();
+                    handle.undo();
                 }
                 if MenuItem::new(im_str!("Redo"))
                     .enabled(db.can_redo())
                     .shortcut(im_str!("Ctrl+Y"))
                     .build(ui)
                 {
-                    db.redo();
+                    handle.redo();
                 }
             });
             ui.menu(im_str!("Debug"), || {
@@ -137,11 +148,8 @@ impl App {
             .build(ui, || match &mut gui_state.main_window {
                 MainWindow::Gallery => {
                     let blobs = db
-                        .pieces
-                        .keys()
-                        .filter_map(|id| db.media.iter().find(|(piece, _)| piece == &id))
-                        .map(|(_, blob)| blob)
-                        .copied();
+                        .pieces()
+                        .filter_map(|(id, _)| db.blobs_for_piece(id).next());
 
                     if let Some(id) = render_gallery(ui, blobs, &actor, images) {
                         actor.request_show_piece(id);
@@ -177,12 +185,8 @@ impl App {
                             }
                         }
                         None => {
-                            let blob_ids = db
-                                .media
-                                .iter()
-                                .filter(|(piece, _)| piece == id)
-                                .map(|(_, blob)| blob)
-                                .copied();
+                            let blob_ids = db.blobs_for_piece(*id);
+
                             for blob_type in BlobType::iter() {
                                 let _id = ui.push_id(&im_str!("{}", blob_type));
                                 if CollapsingHeader::new(&im_str!("{}", blob_type))
@@ -192,9 +196,9 @@ impl App {
                                     ui.group(|| {
                                         if let Some(to_focus) = render_gallery(
                                             ui,
-                                            blob_ids.clone().filter(|blob| {
-                                                db.blobs[*blob].blob_type == blob_type
-                                            }),
+                                            blob_ids
+                                                .clone()
+                                                .filter(|blob| db[*blob].blob_type == blob_type),
                                             &actor,
                                             images,
                                         ) {
@@ -313,75 +317,27 @@ impl App {
                             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
                             added: chrono::Local::now(),
                         };
-                        let raw_color = [
-                            tg.color[0] as f32 / 255.0,
-                            tg.color[1] as f32 / 255.0,
-                            tg.color[2] as f32 / 255.0,
-                            tg.color[3] as f32 / 255.0,
-                        ];
 
-                        tag::tag_old(ui, &im_str!("{}", t.name), raw_color, ExtraType::Gallery);
+                        tag::gallery(ui, &t, &tg);
                     }
                 }
-                MainWindow::Piece { id, edit, .. } => {
+                MainWindow::Piece {
+                    id: piece_id, edit, ..
+                } => {
                     if ui.button(&im_str!("{}", if *edit { "View" } else { "Edit" })) {
                         *edit = !*edit;
                     }
                     if !*edit {
-                        let piece = &db.pieces[*id];
-
-                        ui.text_wrapped(&im_str!("Name: {}", piece.name));
-                        ui.text_wrapped(&im_str!("Source Type: {}", piece.source_type));
-                        ui.text_wrapped(&im_str!("Media Type: {}", piece.media_type));
-                        ui.text(im_str!(
-                            "Date Added: {}",
-                            piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
-                        ));
-                        if let Some(price) = piece.base_price {
-                            ui.text(im_str!("Price: ${}", price));
-                        }
-                        if let Some(price) = piece.tip_price {
-                            ui.text(im_str!("Tipped: ${}", price));
-                        }
-
-                        ui.separator();
-
-                        for i in 0..10u32 {
-                            let tg = TagCategory {
-                                name: format!("category_{}", i),
-                                color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-                                added: chrono::Local::now(),
-                            };
-                            let raw_color = [
-                                tg.color[0] as f32 / 255.0,
-                                tg.color[1] as f32 / 255.0,
-                                tg.color[2] as f32 / 255.0,
-                                tg.color[3] as f32 / 255.0,
-                            ];
-
-                            tag_category(ui, &im_str!("{}", tg.name), raw_color);
-                            ui.indent();
-                            for j in 0..2 {
-                                let t = Tag {
-                                    name: format!("tag_{}", j),
-                                    description: format!("My test description {}", j),
-                                    added: chrono::Local::now(),
-                                    links: Vec::new(),
-                                };
-                                let label = im_str!("{}", t.name);
-                                tag::tag_old(ui, &label, raw_color, ExtraType::View);
-                            }
-                            ui.unindent();
-                        }
-                    } else {
-                        piece::edit(*id, db, ui);
+                        piece::view(*piece_id, &db, ui);
+                    } else if let Some(edit) = piece::edit(*piece_id, &db, ui) {
+                        self.handle.update_piece(edit);
                     }
                 }
             });
     }
 }
 
-fn tag_category(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
+pub fn tag_category(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
     let ret = Selectable::new(im_str!("?"))
         .size([ui.text_line_height_with_spacing(); 2])
         .build(ui);

@@ -3,6 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+#[derive(Clone)]
 pub struct UndoStack<T> {
     history: Vec<T>,
     current: usize,
@@ -19,57 +20,6 @@ impl<T> Deref for UndoStack<T> {
 impl<T> DerefMut for UndoStack<T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.history[self.current]
-    }
-}
-
-pub struct Transaction<'a, T: Clone> {
-    data: T,
-    committed: bool,
-    inner: &'a mut UndoStack<T>,
-}
-
-pub struct TransactionCommit {
-    committed: Cell<bool>,
-}
-
-impl TransactionCommit {
-    pub fn commit(&self) {
-        self.committed.set(true);
-    }
-}
-
-// can optimize this by making it provide a mapped type
-// and only cloning the value of the mapped type
-impl<'a, T: Clone> Transaction<'a, T> {
-    #[must_use]
-    pub fn run<F: FnOnce(&TransactionCommit, &'_ mut T)>(mut self, transaction: F) -> Self {
-        let commit = TransactionCommit {
-            committed: Cell::new(false),
-        };
-        transaction(&commit, &mut self.data);
-        self.committed = commit.committed.get();
-
-        self
-    }
-
-    pub fn finish(self) {
-        if self.committed {
-            self.inner.new_checkpoint(self.data);
-        }
-    }
-}
-
-impl<'a, T: Clone> Deref for Transaction<'a, T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.data
-    }
-}
-
-impl<'a, T: Clone> DerefMut for Transaction<'a, T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.data
     }
 }
 
@@ -110,14 +60,6 @@ impl<T: Clone> UndoStack<T> {
 
     pub fn can_redo(&self) -> bool {
         self.current != self.history.len() - 1
-    }
-
-    pub fn transaction(&mut self) -> Transaction<'_, T> {
-        Transaction {
-            data: self.clone(),
-            committed: false,
-            inner: self,
-        }
     }
 }
 

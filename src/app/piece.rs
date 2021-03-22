@@ -1,130 +1,204 @@
 use std::fmt::Display;
 
-use db::{Db, PieceId, Tag, TagCategory};
+use db::{commands::EditPiece, Db, Piece, PieceId, Tag, TagCategory};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
-use crate::undo::UndoStack;
+use crate::{app::tag, undo::UndoStack};
 
 pub enum Response {}
 
-pub fn view(piece_id: PieceId, db: &UndoStack<Db>, ui: &Ui<'_>) {}
+pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
+    let piece = &db[piece_id];
+    ui.text_wrapped(&im_str!("Name: {}", piece.name));
+    ui.text_wrapped(&im_str!("Source Type: {}", piece.source_type));
+    ui.text_wrapped(&im_str!("Media Type: {}", piece.media_type));
+    ui.text(im_str!(
+        "Date Added: {}",
+        piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
+    ));
+    if let Some(price) = piece.base_price {
+        ui.text(im_str!("Price: ${}", price));
+    }
+    if let Some(price) = piece.tip_price {
+        ui.text(im_str!("Tipped: ${}", price));
+    }
 
-pub fn edit(piece_id: PieceId, db: &mut UndoStack<Db>, ui: &Ui<'_>) {
-    db.transaction()
-        .run(|commit, db| {
-            let piece = if let Some(value) = db.pieces.get_mut(piece_id) {
-                value
-            } else {
-                return;
+    ui.separator();
+
+    for i in 0..10u32 {
+        let tg = TagCategory {
+            name: format!("category_{}", i),
+            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+            added: chrono::Local::now(),
+        };
+        let raw_color = [
+            tg.color[0] as f32 / 255.0,
+            tg.color[1] as f32 / 255.0,
+            tg.color[2] as f32 / 255.0,
+            tg.color[3] as f32 / 255.0,
+        ];
+
+        super::tag_category(ui, &im_str!("{}", tg.name), raw_color);
+        ui.indent();
+        for j in 0..2 {
+            let t = Tag {
+                name: format!("tag_{}", j),
+                description: format!("My test description {}", j),
+                added: chrono::Local::now(),
+                links: Vec::new(),
             };
+            tag::view(ui, &t, &tg);
+        }
+        ui.unindent();
+    }
+}
 
-            let mut buf = piece.name.clone().into();
-            if ui
-                .input_text(im_str!("Name"), &mut buf)
-                .resize_buffer(true)
-                .build()
-            {
-                piece.name = buf.to_string();
-            }
-            if ui.is_item_deactivated_after_edit() {
-                commit.commit();
-            }
+pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
+    let piece = &db[piece_id];
 
-            if combo_box(ui, im_str!("Source Type"), &mut piece.source_type) {
-                commit.commit();
-            }
-            if combo_box(ui, im_str!("Media Type"), &mut piece.media_type) {
-                commit.commit();
+    let mut buf = piece.name.clone().into();
+    ui.input_text(im_str!("Name"), &mut buf)
+        .resize_buffer(true)
+        .build();
+
+    if ui.is_item_deactivated_after_edit() {
+        return Some(EditPiece {
+            id: piece_id,
+            data: Piece {
+                name: buf.to_string(),
+                ..piece.clone()
+            },
+        });
+    }
+
+    if let Some(source_type) = combo_box(ui, im_str!("Source Type"), &piece.source_type) {
+        return Some(EditPiece {
+            id: piece_id,
+            data: Piece {
+                source_type,
+                ..piece.clone()
+            },
+        });
+    }
+
+    if let Some(media_type) = combo_box(ui, im_str!("Media Type"), &piece.media_type) {
+        return Some(EditPiece {
+            id: piece_id,
+            data: Piece {
+                media_type,
+                ..piece.clone()
+            },
+        });
+    }
+
+    ui.text(im_str!(
+        "Date Added: {}",
+        piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
+    ));
+
+    let mut buf = piece
+        .base_price
+        .map(|price| price.to_string())
+        .unwrap_or_else(String::new)
+        .into();
+
+    ui.input_text(im_str!("Price"), &mut buf)
+        .chars_decimal(true)
+        .resize_buffer(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        if buf.is_empty() {
+            return Some(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    base_price: None,
+                    ..piece.clone()
+                },
+            });
+        } else if let Ok(base_price) = buf.to_string().parse() {
+            return Some(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    base_price: Some(base_price),
+                    ..piece.clone()
+                },
+            });
+        }
+    }
+
+    let mut buf = piece
+        .tip_price
+        .map(|price| price.to_string())
+        .unwrap_or_else(String::new)
+        .into();
+    ui.input_text(im_str!("Tip"), &mut buf)
+        .chars_decimal(true)
+        .resize_buffer(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        if buf.is_empty() {
+            return Some(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    tip_price: None,
+                    ..piece.clone()
+                },
+            });
+        } else if let Ok(tip_price) = buf.to_string().parse() {
+            return Some(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    tip_price: Some(tip_price),
+                    ..piece.clone()
+                },
+            });
+        }
+    }
+
+    // TODO fix this up to the actual tags
+
+    ui.separator();
+
+    for i in 0..10u32 {
+        let tg = TagCategory {
+            name: format!("category_{}", i),
+            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+            added: chrono::Local::now(),
+        };
+        let raw_color = [
+            tg.color[0] as f32 / 255.0,
+            tg.color[1] as f32 / 255.0,
+            tg.color[2] as f32 / 255.0,
+            tg.color[3] as f32 / 255.0,
+        ];
+
+        for j in 0..2 {
+            let t = Tag {
+                name: format!("tag_{}", j),
+                description: format!("My test description {}", j),
+                added: chrono::Local::now(),
+                links: Vec::new(),
             };
+            let label = im_str!("{}:{}", tg.name, t.name);
+            tag::edit(ui, &t, &tg);
+        }
+    }
 
-            ui.text(im_str!(
-                "Date Added: {}",
-                piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
-            ));
+    ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
+        .hint(im_str!("Add Tag"))
+        .resize_buffer(true)
+        .build();
 
-            let mut buf = piece
-                .base_price
-                .map(|price| price.to_string())
-                .unwrap_or_else(String::new)
-                .into();
-            if ui
-                .input_text(im_str!("Price"), &mut buf)
-                .chars_decimal(true)
-                .resize_buffer(true)
-                .build()
-            {
-                piece.base_price = buf.to_string().parse().ok();
-                commit.commit();
-            }
-
-            let mut buf = piece
-                .tip_price
-                .map(|price| price.to_string())
-                .unwrap_or_else(String::new)
-                .into();
-            if ui
-                .input_text(im_str!("Tip"), &mut buf)
-                .chars_decimal(true)
-                .resize_buffer(true)
-                .build()
-            {
-                if buf.is_empty() {
-                    piece.tip_price = None;
-                } else if let Ok(value) = buf.to_string().parse() {
-                    piece.tip_price = Some(value);
-                }
-                commit.commit();
-            }
-
-            // TODO fix this up to the actual tags
-
-            ui.separator();
-
-            for i in 0..10u32 {
-                let tg = TagCategory {
-                    name: format!("category_{}", i),
-                    color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-                    added: chrono::Local::now(),
-                };
-                let raw_color = [
-                    tg.color[0] as f32 / 255.0,
-                    tg.color[1] as f32 / 255.0,
-                    tg.color[2] as f32 / 255.0,
-                    tg.color[3] as f32 / 255.0,
-                ];
-
-                for j in 0..2 {
-                    let t = Tag {
-                        name: format!("tag_{}", j),
-                        description: format!("My test description {}", j),
-                        added: chrono::Local::now(),
-                        links: Vec::new(),
-                    };
-                    let label = im_str!("{}:{}", tg.name, t.name);
-                    crate::app::tag::tag_old(
-                        ui,
-                        &label,
-                        raw_color,
-                        crate::app::tag::ExtraType::Edit,
-                    );
-                }
-            }
-
-            ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
-                .hint(im_str!("Add Tag"))
-                .resize_buffer(true)
-                .build();
-        })
-        .finish();
+    None
 }
 
 fn combo_box<T: IntoEnumIterator + Display + Eq>(
     ui: &Ui<'_>,
     label: &'_ ImStr,
-    value: &mut T,
-) -> bool {
-    let mut changed = false;
+    value: &T,
+) -> Option<T> {
+    let mut ret = None;
     ComboBox::new(label)
         .preview_mode(ComboBoxPreviewMode::Full)
         .preview_value(&im_str!("{}", value))
@@ -134,11 +208,9 @@ fn combo_box<T: IntoEnumIterator + Display + Eq>(
                     .selected(value == &item)
                     .build(ui)
                 {
-                    *value = item;
-                    changed = true;
+                    ret = Some(item);
                 }
             }
         });
-
-    changed
+    ret
 }
