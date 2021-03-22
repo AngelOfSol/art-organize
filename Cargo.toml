@@ -37,6 +37,7 @@ wgpu = "0.7.0"
 winit = "0.24.0"
 winreg = "0.8.0"
 glam = "0.13.0"
+rfd = "0.2.1"
 
 [patch.crates-io]
 imgui = {git = "https://github.com/imgui-rs/imgui-rs.git"}

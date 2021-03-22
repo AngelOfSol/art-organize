@@ -42,20 +42,19 @@ categories have:
 - implement saving data to disk
 - move to message passing system
     ? still debating how to handle gui state, given some of it may make more sense to do later
-
-- implement saving images to files on disk rather than storing in one file
-- implement adding blobs via an Add button in each category
-- implement left right navigation when zoomed in on a blob
 - remove image tooltips, replace them with piece name (info?) tool tips
+- reorg gui code
+
+- implement adding blobs via an Add button in each category
+- implement saving images to files on disk rather than storing in one file
+- implement left right navigation when zoomed in on a blob
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
-- reorg gui code
 - implement adding tags
 - implement editing tags
 - implement viewing tag list
 - implement categories
 - implement searching
-- reorg RwLock into RwLockUpgradeable?
 
 
 

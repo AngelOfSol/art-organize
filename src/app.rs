@@ -36,6 +36,13 @@ pub struct App {
 
 impl App {
     pub fn update(&mut self, gui: &mut GuiContext) {
+        {
+            let db = self.handle.read().unwrap();
+
+            self.images
+                .retain(|key, _| db.blobs().any(|(id, _)| id == *key));
+        }
+
         if let Some(Some((blob_id, raw, thumbnail))) = self.incoming_images.recv().now_or_never() {
             let image = TextureImage {
                 data: gui.load(&raw),
@@ -58,7 +65,7 @@ impl App {
 
         let db = self.handle.read().unwrap();
 
-        let handle = &self.handle;
+        let db_handle = &self.handle;
         let gui_handle = &self.gui_handle;
 
         let layout = {
@@ -85,10 +92,10 @@ impl App {
         };
 
         if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
-            handle.undo();
+            db_handle.undo();
         }
         if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
-            handle.redo();
+            db_handle.redo();
         }
 
         ui.main_menu_bar(|| {
@@ -103,14 +110,14 @@ impl App {
                     .shortcut(im_str!("Ctrl+Z"))
                     .build(ui)
                 {
-                    handle.undo();
+                    db_handle.undo();
                 }
                 if MenuItem::new(im_str!("Redo"))
                     .enabled(db.can_redo())
                     .shortcut(im_str!("Ctrl+Y"))
                     .build(ui)
                 {
-                    handle.redo();
+                    db_handle.redo();
                 }
             });
             ui.menu(im_str!("Debug"), || {
@@ -245,10 +252,12 @@ impl App {
                                             .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
                                             .build(ui, || {
                                                 ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
-                                                ui.button_with_size(
+                                                if ui.button_with_size(
                                                     im_str!("+"),
                                                     [THUMBNAIL_SIZE; 2],
-                                                );
+                                                ) {
+                                                    db_handle.new_blob_for_piece(*id, blob_type);
+                                                };
                                             });
                                     });
                                     if ui.is_mouse_hovering_rect(

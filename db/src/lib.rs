@@ -39,6 +39,10 @@ pub struct Db {
 }
 
 impl Db {
+    pub fn create_blob(&mut self, data: Blob) -> BlobId {
+        self.blobs.insert(data)
+    }
+
     pub fn attach_blob(&mut self, AttachBlob { src, dest }: AttachBlob) -> bool {
         self.media.insert((src, dest))
     }

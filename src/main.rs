@@ -1,4 +1,5 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![feature(btree_retain)]
 
 use std::{
     collections::BTreeMap,

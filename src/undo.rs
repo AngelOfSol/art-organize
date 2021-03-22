@@ -29,7 +29,7 @@ impl<T: Clone> UndoStack<T> {
     }
 
     pub fn undo_checkpoint(&mut self) {
-        self.new_checkpoint(self.history.last().unwrap().clone());
+        self.new_checkpoint(self.history[self.current].clone());
     }
     fn new_checkpoint(&mut self, value: T) {
         if self.current > 100 {
