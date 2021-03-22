@@ -41,7 +41,6 @@ pub enum GuiAction {
 }
 
 pub struct GuiHandle {
-    gui_state: Arc<RwLock<GuiState>>,
     outgoing: mpsc::UnboundedSender<GuiAction>,
 }
 
@@ -54,7 +53,15 @@ impl GuiHandle {
     }
 }
 
-async fn gui_state(
+pub fn start_gui_task(db: DbHandle, gui_state: Arc<RwLock<GuiState>>) -> GuiHandle {
+    let (tx, rx) = mpsc::unbounded_channel();
+
+    tokio::spawn(gui_actor(rx, db.clone(), gui_state));
+
+    GuiHandle { outgoing: tx }
+}
+
+async fn gui_actor(
     mut incoming: mpsc::UnboundedReceiver<GuiAction>,
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,

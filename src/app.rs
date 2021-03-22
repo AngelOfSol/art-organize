@@ -1,4 +1,4 @@
-use self::actor::AppActor;
+use self::gui_state::{GuiHandle, GuiState};
 use crate::{
     backend::{actor::DbHandle, DbBackend},
     consts::*,
@@ -7,7 +7,6 @@ use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
 };
-use actor::Inner;
 use db::{BlobId, BlobType, PieceId, Tag, TagCategory};
 use futures_util::FutureExt;
 use gui_state::MainWindow;
@@ -31,7 +30,8 @@ pub mod tag;
 
 pub struct App {
     pub handle: DbHandle,
-    pub actor: Arc<AppActor>,
+    pub gui_handle: GuiHandle,
+    pub gui_state: Arc<RwLock<GuiState>>,
     pub incoming_images: mpsc::Receiver<(BlobId, RawImage, RawImage)>,
     pub images: BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
 }
@@ -57,10 +57,9 @@ impl App {
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
         let db = self.handle.read().unwrap();
         let handle = &self.handle;
-        let mut backend = self.actor.write();
-        let actor = &self.actor;
         let images = &mut self.images;
-        let Inner { gui_state, .. } = backend.deref_mut();
+        let mut gui_state = self.gui_state.write().unwrap();
+        let gui_handle = &self.gui_handle;
 
         if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
             handle.undo();
@@ -148,8 +147,8 @@ impl App {
                         .pieces()
                         .filter_map(|(id, _)| db.blobs_for_piece(id).next());
 
-                    if let Some(id) = render_gallery(ui, blobs, &actor, images) {
-                        actor.request_show_piece(id);
+                    if let Some(id) = render_gallery(ui, blobs, images) {
+                        gui_handle.request_view_piece(db.pieces_for_blob(id).next().unwrap());
                     }
                 }
                 MainWindow::Piece { id, focused, .. } => {
@@ -178,7 +177,7 @@ impl App {
                                 }
                             } else if !images.contains_key(blob_id) {
                                 images.insert(*blob_id, None);
-                                actor.request_load_image(*blob_id);
+                                // actor.request_load_image(*blob_id);
                             }
                         }
                         None => {
@@ -196,7 +195,6 @@ impl App {
                                             blob_ids
                                                 .clone()
                                                 .filter(|blob| db[*blob].blob_type == blob_type),
-                                            &actor,
                                             images,
                                         ) {
                                             *focused = Some(to_focus);
@@ -346,7 +344,6 @@ pub fn tag_category(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
 fn render_gallery<I: Iterator<Item = BlobId>>(
     ui: &Ui,
     blobs: I,
-    actor: &Arc<AppActor>,
     images: &mut BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
 ) -> Option<BlobId> {
     let mut ret = None;
@@ -386,7 +383,7 @@ fn render_gallery<I: Iterator<Item = BlobId>>(
             }
         } else {
             images.insert(blob, None);
-            actor.request_load_image(blob);
+            // actor.request_load_image(blob);
         }
     }
     ui.new_line();
