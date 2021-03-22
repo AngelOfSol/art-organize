@@ -1,13 +1,28 @@
-use std::sync::{Arc, RwLock};
+use std::{
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
-use db::{commands::EditPiece, Db};
-use tokio::{fs, sync::mpsc};
+use db::{commands::EditPiece, Db, Piece, PieceId};
+use tokio::{
+    fs,
+    sync::{mpsc, oneshot},
+};
 
 use super::{data_file, DbBackend};
 
 #[derive(Debug, Clone)]
 pub struct DbHandle {
+    backend: Arc<RwLock<DbBackend>>,
     outgoing: mpsc::UnboundedSender<AppAction>,
+}
+
+impl Deref for DbHandle {
+    type Target = Arc<RwLock<DbBackend>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.backend
+    }
 }
 
 impl DbHandle {
@@ -22,26 +37,37 @@ impl DbHandle {
             .send(AppAction::Db(DbAction::EditPiece(data)))
             .unwrap();
     }
+    pub fn new_piece(&self) -> oneshot::Receiver<PieceId> {
+        let (tx, rx) = oneshot::channel();
+        self.outgoing
+            .send(AppAction::Db(DbAction::NewPiece(tx)))
+            .unwrap();
+        rx
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum AppAction {
     Undo,
     Redo,
     Db(DbAction),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub enum DbAction {
+    NewPiece(oneshot::Sender<PieceId>),
     EditPiece(EditPiece),
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
-    tokio::spawn(db_actor(rx, backend));
+    tokio::spawn(db_actor(rx, backend.clone()));
 
-    DbHandle { outgoing: tx }
+    DbHandle {
+        backend,
+        outgoing: tx,
+    }
 }
 
 async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<RwLock<DbBackend>>) {
@@ -62,6 +88,10 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 match db_action {
                     DbAction::EditPiece(edit) => {
                         db.edit_piece(edit);
+                    }
+                    DbAction::NewPiece(sender) => {
+                        let id = db.create_piece(Piece::default());
+                        sender.send(id).unwrap();
                     }
                 }
             }

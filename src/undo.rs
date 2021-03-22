@@ -3,7 +3,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct UndoStack<T> {
     history: Vec<T>,
     current: usize,

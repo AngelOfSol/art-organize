@@ -87,14 +87,13 @@ async fn async_main() -> anyhow::Result<()> {
             let root = config.data_dirs[0].clone();
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
 
-            let handle = start_db_task(db.clone());
+            let handle = start_db_task(db);
 
             let event_loop = EventLoop::new();
 
             let (tx, rx) = mpsc::channel(4);
 
             let app = App {
-                db,
                 handle,
                 actor: Arc::new(AppActor(RwLock::new(Inner {
                     handle: Handle::current(),

@@ -19,7 +19,7 @@ pub mod actor;
 
 use crate::undo::UndoStack;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DbBackend {
     pub root: PathBuf,
     pub inner: UndoStack<Db>,

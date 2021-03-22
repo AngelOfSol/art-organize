@@ -31,7 +31,6 @@ pub mod tag;
 
 pub struct App {
     pub handle: DbHandle,
-    pub db: Arc<RwLock<DbBackend>>,
     pub actor: Arc<AppActor>,
     pub incoming_images: mpsc::Receiver<(BlobId, RawImage, RawImage)>,
     pub images: BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
@@ -39,8 +38,6 @@ pub struct App {
 
 impl App {
     pub fn update(&mut self, gui: &mut GuiContext) {
-        let mut backend = self.actor.write();
-
         if let Some(Some((blob_id, raw, thumbnail))) = self.incoming_images.recv().now_or_never() {
             let image = TextureImage {
                 data: gui.load(&raw),
@@ -58,7 +55,7 @@ impl App {
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
-        let db = self.db.read().unwrap();
+        let db = self.handle.read().unwrap();
         let handle = &self.handle;
         let mut backend = self.actor.write();
         let actor = &self.actor;
