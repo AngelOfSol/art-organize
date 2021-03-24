@@ -11,7 +11,8 @@ use glam::Vec2;
 use gui_state::MainWindow;
 use imgui::{im_str, ChildWindow, CollapsingHeader, Key, MenuItem, MouseButton, Ui, Window};
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::HashMap,
+    ops::DerefMut,
     sync::{Arc, RwLock},
 };
 use strum::IntoEnumIterator;
@@ -29,38 +30,27 @@ pub struct App {
     pub handle: DbHandle,
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
-    pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, RawImage)>,
-    pub images: BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
+    pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, bool)>,
 }
 
 impl App {
     pub fn update(&mut self, gui: &mut GuiContext) {
+        if let Some(Some((blob_id, raw, is_thumbnail))) = self.incoming_images.recv().now_or_never()
         {
-            let db = self.handle.read().unwrap();
-
-            self.images
-                .retain(|key, _| db.blobs().any(|(id, _)| id == *key));
-        }
-
-        if let Some(Some((blob_id, raw, thumbnail))) = self.incoming_images.recv().now_or_never() {
             let image = TextureImage {
                 data: gui.load(&raw),
                 width: raw.width,
                 height: raw.height,
-            };
-            let thumbnail = TextureImage {
-                data: gui.load(&thumbnail),
-                width: thumbnail.width,
-                height: thumbnail.height,
+                hash: raw.hash,
             };
 
-            self.images.insert(blob_id, Some((image, thumbnail)));
+            self.gui_handle.forward_image(blob_id, image, is_thumbnail);
         }
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
         let mut gui_state = self.gui_state.write().unwrap();
-        let images = &mut self.images;
+        let gui_state = gui_state.deref_mut();
 
         let db = self.handle.read().unwrap();
 
@@ -186,10 +176,16 @@ impl App {
                         .pieces()
                         .filter_map(|(id, _)| db.blobs_for_piece(id).next());
 
-                    if let Some(id) = gallery::render(ui, blobs, &gui_handle, images, |blob, ui| {
-                        let piece_id = db.pieces_for_blob(blob).next().unwrap();
-                        piece::view(piece_id, &db, ui);
-                    }) {
+                    if let Some(id) = gallery::render(
+                        ui,
+                        blobs,
+                        &gui_handle,
+                        &gui_state.thumbnails,
+                        |blob, ui| {
+                            let piece_id = db.pieces_for_blob(blob).next().unwrap();
+                            piece::view(piece_id, &db, ui);
+                        },
+                    ) {
                         gui_handle.request_view_piece(db.pieces_for_blob(id).next().unwrap());
                     }
                 }
@@ -198,27 +194,23 @@ impl App {
 
                     match focused {
                         Some(blob_id) => {
-                            if let Some(requested) = images.get(blob_id) {
-                                if let Some((image, _)) = requested {
-                                    let zoom = (1.0
-                                        / (image.width as f32 / content_region[0])
-                                            .max(image.height as f32 / content_region[1]))
-                                    .min(1.0);
+                            if let Some(image) = gui_state.images.get(blob_id) {
+                                let zoom = (1.0
+                                    / (image.width as f32 / content_region[0])
+                                        .max(image.height as f32 / content_region[1]))
+                                .min(1.0);
 
-                                    let size =
-                                        [image.width as f32 * zoom, image.height as f32 * zoom];
+                                let size = [image.width as f32 * zoom, image.height as f32 * zoom];
 
-                                    let padded = [
-                                        0.5 * (content_region[0] - size[0]) + ui.cursor_pos()[0],
-                                        0.5 * (content_region[1] - size[1]) + ui.cursor_pos()[1],
-                                    ];
+                                let padded = [
+                                    0.5 * (content_region[0] - size[0]) + ui.cursor_pos()[0],
+                                    0.5 * (content_region[1] - size[1]) + ui.cursor_pos()[1],
+                                ];
 
-                                    ui.set_cursor_pos(padded);
+                                ui.set_cursor_pos(padded);
 
-                                    imgui::Image::new(image.data, size).build(ui);
-                                }
-                            } else if !images.contains_key(blob_id) {
-                                images.insert(*blob_id, None);
+                                imgui::Image::new(image.data, size).build(ui);
+                            } else {
                                 gui_handle.request_load_image(*blob_id);
                             }
                         }
@@ -231,49 +223,45 @@ impl App {
                                     .default_open(true)
                                     .build(ui)
                                 {
-                                    ui.group(|| {
-                                        if let Some(to_focus) = gallery::render(
-                                            ui,
-                                            blob_ids
-                                                .clone()
-                                                .filter(|blob| db[*blob].blob_type == blob_type),
-                                            &gui_handle,
-                                            images,
-                                            |blob_id, ui| {
-                                                blob::view(blob_id, &db, ui);
-                                            },
-                                        ) {
-                                            *focused = Some(to_focus);
-                                        }
+                                    if let Some(to_focus) = gallery::render(
+                                        ui,
+                                        blob_ids
+                                            .clone()
+                                            .filter(|blob| db[*blob].blob_type == blob_type),
+                                        &gui_handle,
+                                        &gui_state.thumbnails,
+                                        |blob_id, ui| {
+                                            blob::view(blob_id, &db, ui);
+                                        },
+                                    ) {
+                                        *focused = Some(to_focus);
+                                    }
 
-                                        if ui.content_region_avail()[0]
-                                            < THUMBNAIL_SIZE + IMAGE_BUFFER
-                                        {
-                                            ui.new_line();
-                                        } else {
-                                            ui.same_line();
-                                        }
-                                        ChildWindow::new(im_str!("add button"))
-                                            .draw_background(false)
-                                            .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
-                                            .build(ui, || {
-                                                ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
-                                                if ui.button_with_size(
-                                                    im_str!("+"),
-                                                    [THUMBNAIL_SIZE; 2],
-                                                ) {
-                                                    // TODO move this to a gui_handle
-                                                    let mut recv = db_handle
-                                                        .new_blob_for_piece(*id, blob_type);
-                                                    let id = loop {
-                                                        if let Ok(item) = recv.try_recv() {
-                                                            break item;
-                                                        }
-                                                    };
-                                                    gui_handle.request_load_image(id);
+                                    if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER
+                                    {
+                                        ui.new_line();
+                                    } else {
+                                        ui.same_line();
+                                    }
+                                    ChildWindow::new(im_str!("add button"))
+                                        .draw_background(false)
+                                        .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
+                                        .build(ui, || {
+                                            ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
+                                            if ui
+                                                .button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2])
+                                            {
+                                                // TODO move this to a gui_handle
+                                                let mut recv =
+                                                    db_handle.new_blob_for_piece(*id, blob_type);
+                                                let id = loop {
+                                                    if let Ok(item) = recv.try_recv() {
+                                                        break item;
+                                                    }
                                                 };
-                                            });
-                                    });
+                                                gui_handle.request_load_image(id);
+                                            };
+                                        });
                                 }
                             }
                         }

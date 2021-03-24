@@ -7,13 +7,14 @@ pub struct ImageGeneric<T> {
     pub data: T,
     pub width: u32,
     pub height: u32,
+    pub hash: u64,
 }
 
 pub type RawImage = ImageGeneric<Vec<u8>>;
 pub type TextureImage = ImageGeneric<TextureId>;
 
 impl RawImage {
-    pub fn make(raw: &[u8]) -> anyhow::Result<(Self, Self)> {
+    pub fn make(raw: &[u8], hash: u64) -> anyhow::Result<(Self, Self)> {
         let image = image::load_from_memory(raw)?;
         let thumbnail = image.thumbnail(THUMBNAIL_SIZE as u32, THUMBNAIL_SIZE as u32);
 
@@ -24,6 +25,7 @@ impl RawImage {
             data: image.into_raw(),
             width,
             height,
+            hash,
         };
 
         let thumbnail = thumbnail.into_bgra8();
@@ -33,6 +35,7 @@ impl RawImage {
             data: thumbnail.into_raw(),
             width,
             height,
+            hash,
         };
         Ok((raw, thumbnail))
     }

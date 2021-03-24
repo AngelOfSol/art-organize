@@ -47,12 +47,10 @@ categories have:
 - implement adding blobs via an Add button in each category
 - implement left right navigation when zoomed in on a blob
 - abstract all relevant gui code pertaining to db items
-
-
-- implement saving images to files on disk rather than storing in one file
 - better image/thumbnail loading
-    - including invalidation
-        - save hashes with the entries in the hashmap, and periodically check them to make sure they match?
+
+
+
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
 - implement adding tags
@@ -60,6 +58,8 @@ categories have:
 - implement viewing tag list
 - implement categories
 - implement searching
+- implement saving images to files on disk rather than storing in one file
+- image/thumbnail invalidation based on matching the hashes.
 
 
 

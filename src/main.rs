@@ -1,10 +1,7 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(btree_retain)]
 
-use std::{
-    collections::BTreeMap,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 
 use app::{
     gui_state::{start_gui_task, GuiState},
@@ -99,9 +96,7 @@ async fn async_main() -> anyhow::Result<()> {
 
             let app = App {
                 handle: db_handle,
-
                 incoming_images: rx,
-                images: BTreeMap::new(),
                 gui_handle,
                 gui_state,
             };

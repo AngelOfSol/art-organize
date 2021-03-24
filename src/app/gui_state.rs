@@ -1,4 +1,5 @@
 use std::{
+    collections::{BTreeMap, BTreeSet},
     fmt::Display,
     sync::{Arc, RwLock},
 };
@@ -6,9 +7,13 @@ use std::{
 use db::{BlobId, PieceId};
 use tokio::sync::mpsc;
 
-use crate::{backend::actor::DbHandle, iter_ext, raw_image::RawImage};
+use crate::{
+    backend::actor::DbHandle,
+    iter_ext,
+    raw_image::{RawImage, TextureImage},
+};
 
-#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Default, Clone, PartialEq, Eq)]
 pub struct GuiState {
     pub main_window: MainWindow,
 
@@ -16,6 +21,11 @@ pub struct GuiState {
 
     pub show_styles: bool,
     pub show_metrics: bool,
+
+    pub thumbnails: BTreeMap<BlobId, TextureImage>,
+    pub images: BTreeMap<BlobId, TextureImage>,
+
+    requested: BTreeSet<BlobId>,
 }
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SearchState {
@@ -37,7 +47,12 @@ pub enum MainWindow {
 #[derive(Debug)]
 pub enum GuiAction {
     ViewPiece(PieceId),
-    LoadBlob(BlobId),
+    RequestImage(BlobId),
+    ImageCreated {
+        blob_id: BlobId,
+        image: TextureImage,
+        is_thumbnail: bool,
+    },
     NewPiece,
     NextItem,
     PrevItem,
@@ -56,7 +71,19 @@ impl GuiHandle {
     }
 
     pub fn request_load_image(&self, blob_id: BlobId) {
-        self.outgoing.send(GuiAction::LoadBlob(blob_id)).unwrap();
+        self.outgoing
+            .send(GuiAction::RequestImage(blob_id))
+            .unwrap();
+    }
+
+    pub fn forward_image(&self, blob_id: BlobId, image: TextureImage, is_thumbnail: bool) {
+        self.outgoing
+            .send(GuiAction::ImageCreated {
+                blob_id,
+                image,
+                is_thumbnail,
+            })
+            .unwrap();
     }
 
     pub fn next_item(&self) {
@@ -71,7 +98,7 @@ impl GuiHandle {
 pub fn start_gui_task(
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
-    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, RawImage)>,
+    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, bool)>,
 ) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
@@ -84,7 +111,7 @@ async fn gui_actor(
     mut incoming: mpsc::UnboundedReceiver<GuiAction>,
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
-    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, RawImage)>,
+    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, bool)>,
 ) {
     while let Some(action) = incoming.recv().await {
         match action {
@@ -105,17 +132,24 @@ async fn gui_actor(
                     focused: None,
                 }
             }
-            GuiAction::LoadBlob(blob_id) => {
-                let rc = {
+            GuiAction::RequestImage(blob_id) => {
+                let mut gui_state = gui_state.write().unwrap();
+                // TODO check hashes matching
+                if gui_state.requested.contains(&blob_id) {
+                    continue;
+                } else {
+                    gui_state.requested.insert(blob_id);
+                }
+                let (rc, hash) = {
                     let read = db.read().unwrap();
-
-                    read[blob_id].data.clone()
+                    (read[blob_id].data.clone(), read[blob_id].hash)
                 };
                 let outgoing_images = outgoing_images.clone();
 
                 tokio::task::spawn_blocking(move || {
-                    if let Ok((raw, thumbnail)) = RawImage::make(&rc) {
-                        outgoing_images.send((blob_id, raw, thumbnail)).unwrap();
+                    if let Ok((raw, thumb)) = RawImage::make(&rc, hash) {
+                        outgoing_images.send((blob_id, thumb, true)).unwrap();
+                        outgoing_images.send((blob_id, raw, false)).unwrap();
                     }
                 });
             }
@@ -147,6 +181,18 @@ async fn gui_actor(
                             *focused = Some(new);
                         }
                     }
+                }
+            }
+            GuiAction::ImageCreated {
+                blob_id,
+                image,
+                is_thumbnail,
+            } => {
+                let mut gui_state = gui_state.write().unwrap();
+                if is_thumbnail {
+                    gui_state.thumbnails.insert(blob_id, image);
+                } else {
+                    gui_state.images.insert(blob_id, image);
                 }
             }
         }

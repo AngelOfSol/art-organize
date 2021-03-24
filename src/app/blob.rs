@@ -36,6 +36,10 @@ pub fn thumbnail_button(label: &ImStr, thumbnail: &TextureImage, ui: &Ui<'_>) ->
             ]);
 
             if imgui::ImageButton::new(thumbnail.data, size).build(ui) {
+                dbg!(&thumbnail.width);
+                dbg!(&thumbnail.height);
+                dbg!(&size);
+                dbg!(&padding);
                 response = ThumbnailResponse::Clicked
             } else if ui.is_item_hovered() {
                 response = ThumbnailResponse::Hovered
