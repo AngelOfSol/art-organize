@@ -8,7 +8,7 @@ use std::{
 use chrono::Local;
 use db::{
     commands::{AttachBlob, EditPiece},
-    Blob, BlobId, BlobType, Db, Piece, PieceId,
+    Blob, BlobType, Db, Piece, PieceId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use tokio::{
@@ -51,17 +51,10 @@ impl DbHandle {
             .unwrap();
         rx
     }
-    pub fn new_blobs_for_piece(
-        &self,
-        to: PieceId,
-        blob_type: BlobType,
-    ) -> oneshot::Receiver<Vec<BlobId>> {
-        let (tx, rx) = oneshot::channel();
+    pub fn new_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
         self.outgoing
-            .send(AppAction::Db(DbAction::AddBlob { to, blob_type, tx }))
+            .send(AppAction::Db(DbAction::AddBlob { to, blob_type }))
             .unwrap();
-
-        rx
     }
 }
 
@@ -76,11 +69,7 @@ pub enum AppAction {
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
     EditPiece(EditPiece),
-    AddBlob {
-        to: PieceId,
-        blob_type: BlobType,
-        tx: oneshot::Sender<Vec<BlobId>>,
-    },
+    AddBlob { to: PieceId, blob_type: BlobType },
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
@@ -105,7 +94,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 let mut db = data.write().unwrap();
                 db.redo();
             }
-            AppAction::Db(DbAction::AddBlob { to, blob_type, tx }) => {
+            AppAction::Db(DbAction::AddBlob { to, blob_type }) => {
                 let data = data.clone();
                 tokio::spawn(async move {
                     let files = if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await
@@ -139,12 +128,10 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         let mut db = data.write().unwrap();
                         db.undo_checkpoint();
 
-                        let ids = files.into_iter().map(|blob| {
+                        for blob in files {
                             let id = db.create_blob(blob);
                             db.attach_blob(AttachBlob { src: to, dest: id });
-                            id
-                        });
-                        let _ = tx.send(ids.collect());
+                        }
                     }
                     save_data(&data).await;
                 });

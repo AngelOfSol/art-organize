@@ -223,6 +223,7 @@ impl App {
                                     .default_open(true)
                                     .build(ui)
                                 {
+                                    let _group = ui.begin_group();
                                     if let Some(to_focus) = gallery::render(
                                         ui,
                                         blob_ids
@@ -251,9 +252,7 @@ impl App {
                                             if ui
                                                 .button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2])
                                             {
-                                                // TODO move this to a gui_handle
-                                                let mut recv =
-                                                    db_handle.new_blobs_for_piece(*id, blob_type);
+                                                db_handle.new_blobs_for_piece(*id, blob_type);
                                             };
                                         });
                                 }
