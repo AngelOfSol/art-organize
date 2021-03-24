@@ -26,7 +26,7 @@ pub enum ThumbnailResponse {
 pub fn thumbnail_button(label: &ImStr, thumbnail: &TextureImage, ui: &Ui<'_>) -> ThumbnailResponse {
     let mut response = ThumbnailResponse::None;
     imgui::ChildWindow::new(label)
-        .size([THUMBNAIL_SIZE + IMAGE_BUFFER, THUMBNAIL_SIZE + IMAGE_BUFFER])
+        .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
         .draw_background(false)
         .build(ui, || {
             let (size, padding) = rescale(thumbnail, [THUMBNAIL_SIZE; 2]);
@@ -36,10 +36,6 @@ pub fn thumbnail_button(label: &ImStr, thumbnail: &TextureImage, ui: &Ui<'_>) ->
             ]);
 
             if imgui::ImageButton::new(thumbnail.data, size).build(ui) {
-                dbg!(&thumbnail.width);
-                dbg!(&thumbnail.height);
-                dbg!(&size);
-                dbg!(&padding);
                 response = ThumbnailResponse::Clicked
             } else if ui.is_item_hovered() {
                 response = ThumbnailResponse::Hovered

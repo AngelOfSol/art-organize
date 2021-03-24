@@ -253,13 +253,7 @@ impl App {
                                             {
                                                 // TODO move this to a gui_handle
                                                 let mut recv =
-                                                    db_handle.new_blob_for_piece(*id, blob_type);
-                                                let id = loop {
-                                                    if let Ok(item) = recv.try_recv() {
-                                                        break item;
-                                                    }
-                                                };
-                                                gui_handle.request_load_image(id);
+                                                    db_handle.new_blobs_for_piece(*id, blob_type);
                                             };
                                         });
                                 }

@@ -10,6 +10,7 @@ use db::{
     commands::{AttachBlob, EditPiece},
     Blob, BlobId, BlobType, Db, Piece, PieceId,
 };
+use futures_util::{stream::FuturesUnordered, StreamExt};
 use tokio::{
     fs,
     sync::{mpsc, oneshot},
@@ -50,11 +51,11 @@ impl DbHandle {
             .unwrap();
         rx
     }
-    pub fn new_blob_for_piece(
+    pub fn new_blobs_for_piece(
         &self,
         to: PieceId,
         blob_type: BlobType,
-    ) -> oneshot::Receiver<BlobId> {
+    ) -> oneshot::Receiver<Vec<BlobId>> {
         let (tx, rx) = oneshot::channel();
         self.outgoing
             .send(AppAction::Db(DbAction::AddBlob { to, blob_type, tx }))
@@ -78,7 +79,7 @@ pub enum DbAction {
     AddBlob {
         to: PieceId,
         blob_type: BlobType,
-        tx: oneshot::Sender<BlobId>,
+        tx: oneshot::Sender<Vec<BlobId>>,
     },
 }
 
@@ -107,33 +108,43 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
             AppAction::Db(DbAction::AddBlob { to, blob_type, tx }) => {
                 let data = data.clone();
                 tokio::spawn(async move {
-                    let file = if let Some(file) = rfd::AsyncFileDialog::new().pick_file().await {
-                        file.path().to_path_buf()
+                    let files = if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await
+                    {
+                        files
                     } else {
                         return;
                     };
 
-                    let raw_data = fs::read(&file).await.unwrap();
+                    let file_futures: FuturesUnordered<_> = files
+                        .into_iter()
+                        .map(|file| async move {
+                            let file = file.path().to_path_buf();
+                            let raw_data = fs::read(&file).await.unwrap();
+                            let mut hash = DefaultHasher::new();
+                            raw_data.hash(&mut hash);
+                            let hash = hash.finish();
 
-                    let mut hash = DefaultHasher::new();
-                    raw_data.hash(&mut hash);
-                    let hash = hash.finish();
-
-                    let blob = Blob {
-                        file_name: file.to_string_lossy().into(),
-                        hash,
-                        data: Arc::new(raw_data),
-                        blob_type,
-                        added: Local::now(),
-                    };
+                            Blob {
+                                file_name: file.to_string_lossy().into(),
+                                hash,
+                                data: Arc::new(raw_data),
+                                blob_type,
+                                added: Local::now(),
+                            }
+                        })
+                        .collect();
+                    let files: Vec<_> = file_futures.collect().await;
 
                     {
                         let mut db = data.write().unwrap();
                         db.undo_checkpoint();
 
-                        let id = db.create_blob(blob);
-                        db.attach_blob(AttachBlob { src: to, dest: id });
-                        tx.send(id).unwrap();
+                        let ids = files.into_iter().map(|blob| {
+                            let id = db.create_blob(blob);
+                            db.attach_blob(AttachBlob { src: to, dest: id });
+                            id
+                        });
+                        let _ = tx.send(ids.collect());
                     }
                     save_data(&data).await;
                 });
