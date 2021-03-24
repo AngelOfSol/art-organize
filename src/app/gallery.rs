@@ -32,13 +32,15 @@ pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
                     ret = Some(blob);
                 }
             }
-
-            ui.same_line();
-            if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
-                ui.new_line();
-            }
         } else {
-            gui_handle.request_load_image(blob);
+            ui.dummy([THUMBNAIL_SIZE + IMAGE_BUFFER; 2]);
+            if ui.is_item_visible() {
+                gui_handle.request_load_image(blob);
+            }
+        }
+        ui.same_line();
+        if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
+            ui.new_line();
         }
     }
     ui.new_line();

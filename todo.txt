@@ -49,8 +49,11 @@ categories have:
 - abstract all relevant gui code pertaining to db items
 - better image/thumbnail loading
 
+- add multiple blob loading
+    - handle undo checkpointing properly
 
-
+- create date editor widget
+- switch to dates over datetimes for data?
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
 - implement adding tags
