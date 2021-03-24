@@ -25,6 +25,7 @@ mod cli;
 mod config;
 mod consts;
 mod gui;
+mod iter_ext;
 mod layout;
 mod loaders;
 mod raw_image;

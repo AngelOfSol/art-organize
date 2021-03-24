@@ -2,14 +2,13 @@ use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     ops::Deref,
-    path::PathBuf,
     sync::{Arc, RwLock},
 };
 
 use chrono::Local;
 use db::{
     commands::{AttachBlob, EditPiece},
-    Blob, BlobType, Db, Piece, PieceId,
+    Blob, BlobId, BlobType, Db, Piece, PieceId,
 };
 use tokio::{
     fs,
@@ -51,10 +50,17 @@ impl DbHandle {
             .unwrap();
         rx
     }
-    pub fn new_blob_for_piece(&self, to: PieceId, blob_type: BlobType) {
+    pub fn new_blob_for_piece(
+        &self,
+        to: PieceId,
+        blob_type: BlobType,
+    ) -> oneshot::Receiver<BlobId> {
+        let (tx, rx) = oneshot::channel();
         self.outgoing
-            .send(AppAction::Db(DbAction::AddBlob { to, blob_type }))
+            .send(AppAction::Db(DbAction::AddBlob { to, blob_type, tx }))
             .unwrap();
+
+        rx
     }
 }
 
@@ -69,7 +75,11 @@ pub enum AppAction {
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
     EditPiece(EditPiece),
-    AddBlob { to: PieceId, blob_type: BlobType },
+    AddBlob {
+        to: PieceId,
+        blob_type: BlobType,
+        tx: oneshot::Sender<BlobId>,
+    },
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
@@ -94,7 +104,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 let mut db = data.write().unwrap();
                 db.redo();
             }
-            AppAction::Db(DbAction::AddBlob { to, blob_type }) => {
+            AppAction::Db(DbAction::AddBlob { to, blob_type, tx }) => {
                 let data = data.clone();
                 tokio::spawn(async move {
                     let file = if let Some(file) = rfd::AsyncFileDialog::new().pick_file().await {
@@ -123,6 +133,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
 
                         let id = db.create_blob(blob);
                         db.attach_blob(AttachBlob { src: to, dest: id });
+                        tx.send(id).unwrap();
                     }
                     save_data(&data).await;
                 });

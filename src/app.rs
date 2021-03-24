@@ -9,10 +9,7 @@ use db::{BlobId, BlobType, Tag, TagCategory};
 use futures_util::FutureExt;
 use glam::Vec2;
 use gui_state::MainWindow;
-use imgui::{
-    im_str, ChildWindow, CollapsingHeader, ImStr, Key, MenuItem, MouseButton, Selectable, Ui,
-    Window,
-};
+use imgui::{im_str, ChildWindow, CollapsingHeader, Key, MenuItem, MouseButton, Ui, Window};
 use std::{
     collections::{BTreeMap, HashMap},
     sync::{Arc, RwLock},
@@ -22,9 +19,11 @@ use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
 pub mod blob;
+pub mod gallery;
 pub mod gui_state;
 pub mod piece;
 pub mod tag;
+pub mod tag_category;
 
 pub struct App {
     pub handle: DbHandle,
@@ -96,6 +95,13 @@ impl App {
         }
         if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
             db_handle.redo();
+        }
+
+        if ui.is_key_pressed(Key::RightArrow) {
+            gui_handle.next_item();
+        }
+        if ui.is_key_pressed(Key::LeftArrow) {
+            gui_handle.prev_item();
         }
 
         ui.main_menu_bar(|| {
@@ -180,7 +186,7 @@ impl App {
                         .pieces()
                         .filter_map(|(id, _)| db.blobs_for_piece(id).next());
 
-                    if let Some(id) = render_gallery(ui, blobs, &gui_handle, images, |blob, ui| {
+                    if let Some(id) = gallery::render(ui, blobs, &gui_handle, images, |blob, ui| {
                         let piece_id = db.pieces_for_blob(blob).next().unwrap();
                         piece::view(piece_id, &db, ui);
                     }) {
@@ -226,7 +232,7 @@ impl App {
                                     .build(ui)
                                 {
                                     ui.group(|| {
-                                        if let Some(to_focus) = render_gallery(
+                                        if let Some(to_focus) = gallery::render(
                                             ui,
                                             blob_ids
                                                 .clone()
@@ -256,21 +262,18 @@ impl App {
                                                     im_str!("+"),
                                                     [THUMBNAIL_SIZE; 2],
                                                 ) {
-                                                    db_handle.new_blob_for_piece(*id, blob_type);
+                                                    // TODO move this to a gui_handle
+                                                    let mut recv = db_handle
+                                                        .new_blob_for_piece(*id, blob_type);
+                                                    let id = loop {
+                                                        if let Ok(item) = recv.try_recv() {
+                                                            break item;
+                                                        }
+                                                    };
+                                                    gui_handle.request_load_image(id);
                                                 };
                                             });
                                     });
-                                    if ui.is_mouse_hovering_rect(
-                                        ui.item_rect_min(),
-                                        [
-                                            ui.cursor_screen_pos()[0]
-                                                + ui.content_region_avail()[0],
-                                            ui.item_rect_max()[1],
-                                        ],
-                                    ) {
-                                        // dbg!("hoverign");
-                                        //
-                                    }
                                 }
                             }
                         }
@@ -341,83 +344,4 @@ impl App {
                 }
             });
     }
-}
-
-pub fn tag_category(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
-    let ret = Selectable::new(im_str!("?"))
-        .size([ui.text_line_height_with_spacing(); 2])
-        .build(ui);
-    ui.same_line();
-    ui.text_colored(raw_color, label);
-    ret
-}
-
-fn render_gallery<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
-    ui: &Ui,
-    blobs: I,
-    gui_handle: &GuiHandle,
-    images: &mut BTreeMap<BlobId, Option<(TextureImage, TextureImage)>>,
-    tooltip: F,
-) -> Option<BlobId> {
-    let mut ret = None;
-
-    for blob in blobs {
-        if let Some(requested) = images.get(&blob) {
-            if let Some((_, thumbnail)) = requested {
-                imgui::ChildWindow::new(&im_str!("##{:?}", blob))
-                    .size([THUMBNAIL_SIZE + IMAGE_BUFFER, THUMBNAIL_SIZE + IMAGE_BUFFER])
-                    .draw_background(false)
-                    .build(ui, || {
-                        let (size, padding) = rescale(thumbnail, [THUMBNAIL_SIZE; 2]);
-                        ui.set_cursor_pos([
-                            ui.cursor_pos()[0] + padding[0] / 2.0 + IMAGE_BUFFER / 2.0,
-                            ui.cursor_pos()[1] + padding[1] / 2.0 + IMAGE_BUFFER / 2.0,
-                        ]);
-
-                        if imgui::ImageButton::new(thumbnail.data, size).build(ui) {
-                            ret = Some(blob);
-                        }
-
-                        if ui.is_item_hovered() {
-                            ui.tooltip(|| {
-                                tooltip(blob, ui);
-                            });
-                        }
-                    });
-
-                ui.same_line();
-                if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
-                    ui.new_line();
-                }
-            }
-        } else {
-            images.insert(blob, None);
-            gui_handle.request_load_image(blob);
-        }
-    }
-    ui.new_line();
-
-    ret
-}
-fn rescale(image: &TextureImage, max_size: [f32; 2]) -> ([f32; 2], [f32; 2]) {
-    rescale_with_zoom(image, max_size, 1.0)
-}
-fn rescale_with_zoom(image: &TextureImage, max_size: [f32; 2], zoom: f32) -> ([f32; 2], [f32; 2]) {
-    let size = [image.width as f32 * zoom, image.height as f32 * zoom];
-    let aspect_ratio = size[0] / size[1];
-    let new_aspect_ratio = max_size[0] / max_size[1];
-
-    let size = if size[0] <= max_size[0] && size[1] <= max_size[1] {
-        size
-    } else {
-        let use_width = aspect_ratio >= new_aspect_ratio;
-
-        if use_width {
-            [max_size[0], size[1] * max_size[0] / size[0]]
-        } else {
-            [size[0] * max_size[1] / size[1], max_size[1]]
-        }
-    };
-
-    (size, [max_size[0] - size[0], max_size[1] - size[1]])
 }

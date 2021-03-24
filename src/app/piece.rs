@@ -1,10 +1,8 @@
-use std::fmt::Display;
-
+use crate::app::{tag, tag_category};
 use db::{commands::EditPiece, Db, Piece, PieceId, Tag, TagCategory};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
+use std::fmt::Display;
 use strum::IntoEnumIterator;
-
-use crate::app::tag;
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -41,7 +39,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
             tg.color[3] as f32 / 255.0,
         ];
 
-        super::tag_category(ui, &im_str!("{}", tg.name), raw_color);
+        tag_category::view(ui, &im_str!("{}", tg.name), raw_color);
         ui.indent();
         for j in 0..2 {
             let t = Tag {

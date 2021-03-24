@@ -6,7 +6,7 @@ use std::{
 use db::{BlobId, PieceId};
 use tokio::sync::mpsc;
 
-use crate::{backend::actor::DbHandle, raw_image::RawImage};
+use crate::{backend::actor::DbHandle, iter_ext, raw_image::RawImage};
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct GuiState {
@@ -39,6 +39,8 @@ pub enum GuiAction {
     ViewPiece(PieceId),
     LoadBlob(BlobId),
     NewPiece,
+    NextItem,
+    PrevItem,
 }
 
 pub struct GuiHandle {
@@ -55,6 +57,14 @@ impl GuiHandle {
 
     pub fn request_load_image(&self, blob_id: BlobId) {
         self.outgoing.send(GuiAction::LoadBlob(blob_id)).unwrap();
+    }
+
+    pub fn next_item(&self) {
+        self.outgoing.send(GuiAction::NextItem).unwrap();
+    }
+
+    pub fn prev_item(&self) {
+        self.outgoing.send(GuiAction::PrevItem).unwrap();
     }
 }
 
@@ -108,6 +118,36 @@ async fn gui_actor(
                         outgoing_images.send((blob_id, raw, thumbnail)).unwrap();
                     }
                 });
+            }
+            GuiAction::NextItem => {
+                let db = db.read().unwrap();
+                let mut gui_state = gui_state.write().unwrap();
+                if let MainWindow::Piece { id, focused, .. } = &mut gui_state.main_window {
+                    if let Some(blob_id) = focused {
+                        if let Some(new) = iter_ext::next(
+                            db.blobs_for_piece(*id)
+                                .filter(|blob| db[*blob].blob_type == db[*blob_id].blob_type),
+                            *blob_id,
+                        ) {
+                            *focused = Some(new);
+                        }
+                    }
+                }
+            }
+            GuiAction::PrevItem => {
+                let db = db.read().unwrap();
+                let mut gui_state = gui_state.write().unwrap();
+                if let MainWindow::Piece { id, focused, .. } = &mut gui_state.main_window {
+                    if let Some(blob_id) = focused {
+                        if let Some(new) = iter_ext::prev(
+                            db.blobs_for_piece(*id)
+                                .filter(|blob| db[*blob].blob_type == db[*blob_id].blob_type),
+                            *blob_id,
+                        ) {
+                            *focused = Some(new);
+                        }
+                    }
+                }
             }
         }
     }
