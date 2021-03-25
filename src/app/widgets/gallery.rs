@@ -4,11 +4,12 @@ use db::BlobId;
 use imgui::{im_str, Ui};
 
 use crate::{
+    app::gui_state::GuiHandle,
     consts::{IMAGE_BUFFER, THUMBNAIL_SIZE},
     raw_image::TextureImage,
 };
 
-use super::{blob, gui_state::GuiHandle};
+use super::blob;
 
 pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
     ui: &Ui,

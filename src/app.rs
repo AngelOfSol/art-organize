@@ -22,13 +22,10 @@ use strum::IntoEnumIterator;
 use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
-pub mod blob;
-pub mod date;
-pub mod gallery;
 pub mod gui_state;
-pub mod piece;
-pub mod tag;
-pub mod tag_category;
+pub mod widgets;
+
+use widgets::*;
 
 pub struct App {
     pub handle: DbHandle,

@@ -15,20 +15,6 @@ use crate::{
 
 use super::date;
 
-pub async fn from_path(path: PathBuf, blob_type: BlobType) -> anyhow::Result<Blob> {
-    let raw_data = tokio::fs::read(&path).await?;
-    let mut hash = DefaultHasher::new();
-    raw_data.hash(&mut hash);
-    let hash = hash.finish();
-
-    Ok(Blob {
-        file_name: path.file_name().unwrap().to_string_lossy().into_owned(),
-        hash,
-        blob_type,
-        added: Local::today().naive_local(),
-    })
-}
-
 // TODO rename tooltip view?
 pub fn view(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
     let blob = &db[blob_id];

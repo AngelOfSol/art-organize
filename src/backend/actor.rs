@@ -13,8 +13,30 @@ use tokio::{
     fs,
     sync::{mpsc, oneshot},
 };
+mod blob {
+    use std::{
+        collections::hash_map::DefaultHasher,
+        hash::{Hash, Hasher},
+        path::PathBuf,
+    };
 
-use crate::app::blob;
+    use chrono::Local;
+    use db::{Blob, BlobType};
+
+    pub async fn from_path(path: PathBuf, blob_type: BlobType) -> anyhow::Result<Blob> {
+        let raw_data = tokio::fs::read(&path).await?;
+        let mut hash = DefaultHasher::new();
+        raw_data.hash(&mut hash);
+        let hash = hash.finish();
+
+        Ok(Blob {
+            file_name: path.file_name().unwrap().to_string_lossy().into_owned(),
+            hash,
+            blob_type,
+            added: Local::today().naive_local(),
+        })
+    }
+}
 
 use super::{data_file, DbBackend};
 
