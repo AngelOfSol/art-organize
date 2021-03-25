@@ -3,9 +3,10 @@ use crate::app::widgets::*;
 use db::BlobId;
 use imgui::im_str;
 
+#[derive(Debug)]
 pub struct BlobView {
-    id: BlobId,
-    edit: bool,
+    pub id: BlobId,
+    pub edit: bool,
 }
 
 impl GuiView for BlobView {

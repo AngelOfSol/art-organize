@@ -1,18 +1,19 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fmt::Display,
+    fmt::Debug,
     fs::File,
     io::BufReader,
-    ops::Deref,
-    sync::{Arc, RwLock},
+    ops::{Deref, DerefMut},
+    path::PathBuf,
+    sync::{mpsc as std_mpsc, Arc, RwLock},
 };
 
-use db::{BlobId, PieceId};
+use db::BlobId;
+use gallery::Gallery;
 use tokio::sync::mpsc;
 
 use crate::{
     backend::actor::DbHandle,
-    iter_ext,
     raw_image::{RawImage, TextureImage},
 };
 
@@ -20,10 +21,45 @@ pub mod blob;
 pub mod gallery;
 pub mod piece;
 
-#[derive(Default, Clone, PartialEq, Eq)]
 pub struct GuiState {
-    pub main_window: MainWindow,
-    pub inner: InnerGuiState,
+    view_stack: Vec<Box<dyn GuiView>>,
+    inner: InnerGuiState,
+}
+
+impl Deref for GuiState {
+    type Target = InnerGuiState;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl DerefMut for GuiState {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl GuiState {
+    pub fn render_main(&mut self, gui_handle: &GuiHandle, ui: &imgui::Ui<'_>) {
+        self.view_stack
+            .last_mut()
+            .unwrap()
+            .draw_main(gui_handle, &self.inner, ui)
+    }
+    pub fn render_explorer(&mut self, gui_handle: &GuiHandle, ui: &imgui::Ui<'_>) {
+        self.view_stack
+            .last_mut()
+            .unwrap()
+            .draw_explorer(gui_handle, &self.inner, ui)
+    }
+}
+
+impl Default for GuiState {
+    fn default() -> Self {
+        Self {
+            view_stack: vec![Box::new(Gallery)],
+            inner: InnerGuiState::default(),
+        }
+    }
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -38,13 +74,7 @@ pub struct InnerGuiState {
     requested: BTreeSet<BlobId>,
 }
 
-pub struct StateRef<'a> {
-    pub search: &'a SearchState,
-    pub thumbnails: &'a BTreeMap<BlobId, TextureImage>,
-    pub images: &'a BTreeMap<BlobId, TextureImage>,
-}
-
-pub trait GuiView {
+pub trait GuiView: Sync + Send + Debug {
     fn draw_main(&mut self, gui_handle: &GuiHandle, gui_state: &InnerGuiState, ui: &imgui::Ui<'_>);
     fn draw_explorer(
         &mut self,
@@ -61,19 +91,8 @@ pub struct SearchState {
     pub selected: Option<usize>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum MainWindow {
-    Gallery,
-    Piece {
-        id: PieceId,
-        edit: bool,
-        focused: Option<BlobId>,
-    },
-}
-
 #[derive(Debug)]
 pub enum GuiAction {
-    ViewPiece(PieceId),
     RequestImage(BlobId),
     ImageCreated {
         blob_id: BlobId,
@@ -81,12 +100,13 @@ pub enum GuiAction {
         is_thumbnail: bool,
     },
     NewPiece,
-    NextItem,
-    PrevItem,
+    Back,
+    Push(Box<dyn GuiView>),
 }
 
 pub struct GuiHandle {
     outgoing: mpsc::UnboundedSender<GuiAction>,
+    pub incoming_files: std_mpsc::Receiver<PathBuf>,
     db: DbHandle,
 }
 
@@ -100,9 +120,6 @@ impl Deref for GuiHandle {
 impl GuiHandle {
     pub fn request_new_piece(&self) {
         self.outgoing.send(GuiAction::NewPiece).unwrap();
-    }
-    pub fn request_view_piece(&self, id: PieceId) {
-        self.outgoing.send(GuiAction::ViewPiece(id)).unwrap();
     }
 
     pub fn request_load_image(&self, blob_id: BlobId) {
@@ -121,12 +138,14 @@ impl GuiHandle {
             .unwrap();
     }
 
-    pub fn next_item(&self) {
-        self.outgoing.send(GuiAction::NextItem).unwrap();
+    pub fn go_back(&self) {
+        self.outgoing.send(GuiAction::Back).unwrap();
     }
 
-    pub fn prev_item(&self) {
-        self.outgoing.send(GuiAction::PrevItem).unwrap();
+    pub fn goto<V: GuiView + 'static>(&self, state: V) {
+        self.outgoing
+            .send(GuiAction::Push(Box::new(state)))
+            .unwrap();
     }
 }
 
@@ -134,12 +153,17 @@ pub fn start_gui_task(
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
     outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, bool)>,
+    incoming_files: std_mpsc::Receiver<PathBuf>,
 ) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
     tokio::spawn(gui_actor(rx, db.clone(), gui_state, outgoing_images));
 
-    GuiHandle { outgoing: tx, db }
+    GuiHandle {
+        outgoing: tx,
+        db,
+        incoming_files,
+    }
 }
 
 async fn gui_actor(
@@ -150,22 +174,17 @@ async fn gui_actor(
 ) {
     while let Some(action) = incoming.recv().await {
         match action {
-            GuiAction::ViewPiece(piece) => {
-                let mut gui_state = gui_state.write().unwrap();
-                gui_state.main_window = MainWindow::Piece {
-                    id: piece,
-                    edit: false,
-                    focused: None,
-                }
-            }
             GuiAction::NewPiece => {
-                let piece = db.new_piece().await.unwrap();
-                let mut gui_state = gui_state.write().unwrap();
-                gui_state.main_window = MainWindow::Piece {
-                    id: piece,
-                    edit: false,
-                    focused: None,
-                }
+                let _piece = db.new_piece().await.unwrap();
+                let mut _gui_state = gui_state.write().unwrap();
+
+                todo!()
+
+                // gui_state.main_window = MainWindow::Piece {
+                //     id: piece,
+                //     edit: false,
+                //     focused: None,
+                // }
             }
             GuiAction::RequestImage(blob_id) => {
                 let read = db.read().unwrap();
@@ -206,36 +225,7 @@ async fn gui_actor(
                     }
                 });
             }
-            GuiAction::NextItem => {
-                let db = db.read().unwrap();
-                let mut gui_state = gui_state.write().unwrap();
-                if let MainWindow::Piece { id, focused, .. } = &mut gui_state.main_window {
-                    if let Some(blob_id) = focused {
-                        if let Some(new) = iter_ext::next(
-                            db.blobs_for_piece(*id)
-                                .filter(|blob| db[*blob].blob_type == db[*blob_id].blob_type),
-                            *blob_id,
-                        ) {
-                            *focused = Some(new);
-                        }
-                    }
-                }
-            }
-            GuiAction::PrevItem => {
-                let db = db.read().unwrap();
-                let mut gui_state = gui_state.write().unwrap();
-                if let MainWindow::Piece { id, focused, .. } = &mut gui_state.main_window {
-                    if let Some(blob_id) = focused {
-                        if let Some(new) = iter_ext::prev(
-                            db.blobs_for_piece(*id)
-                                .filter(|blob| db[blob].blob_type == db[*blob_id].blob_type),
-                            *blob_id,
-                        ) {
-                            *focused = Some(new);
-                        }
-                    }
-                }
-            }
+
             GuiAction::ImageCreated {
                 blob_id,
                 image,
@@ -248,25 +238,14 @@ async fn gui_actor(
                     gui_state.inner.images.insert(blob_id, image);
                 }
             }
-        }
-    }
-}
-
-impl Default for MainWindow {
-    fn default() -> Self {
-        Self::Gallery
-    }
-}
-
-impl Display for MainWindow {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                MainWindow::Gallery => "Gallery",
-                MainWindow::Piece { .. } => "Piece",
+            GuiAction::Back => {
+                let mut gui_state = gui_state.write().unwrap();
+                gui_state.view_stack.pop();
             }
-        )
+            GuiAction::Push(state) => {
+                let mut gui_state = gui_state.write().unwrap();
+                gui_state.view_stack.push(state);
+            }
+        }
     }
 }

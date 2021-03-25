@@ -1,11 +1,4 @@
-use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
-    path::PathBuf,
-};
-
-use chrono::Local;
-use db::{commands::EditBlob, Blob, BlobId, BlobType, Db};
+use db::{commands::EditBlob, BlobId, Db};
 use imgui::{im_str, ImStr, Ui};
 
 use crate::{

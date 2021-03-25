@@ -1,13 +1,14 @@
-use super::GuiView;
+use super::{blob::BlobView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
 use imgui::{im_str, ChildWindow, CollapsingHeader};
 use strum::IntoEnumIterator;
 
+#[derive(Debug)]
 pub struct PieceView {
-    id: PieceId,
-    edit: bool,
+    pub id: PieceId,
+    pub edit: bool,
 }
 
 impl GuiView for PieceView {
@@ -31,7 +32,7 @@ impl GuiView for PieceView {
                 let blob_ids_of_type = blob_ids
                     .clone()
                     .filter(|blob| db[blob].blob_type == blob_type);
-                if let Some(_to_focus) = gallery::render(
+                if let Some(id) = gallery::render(
                     ui,
                     blob_ids_of_type,
                     &gui_handle,
@@ -40,8 +41,7 @@ impl GuiView for PieceView {
                         blob::tooltip(blob_id, &db, ui);
                     },
                 ) {
-                    todo!()
-                    // *focused = Some(to_focus);
+                    gui_handle.goto(BlobView { id, edit: false });
                 }
 
                 if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
@@ -67,10 +67,9 @@ impl GuiView for PieceView {
                     ui.item_rect_max()[1],
                 ],
             ) {
-                todo!()
-                // for file in self.incoming_files.try_iter() {
-                //     gui_handle.new_blob_from_file(self.id, blob_type, file);
-                // }
+                for file in gui_handle.incoming_files.try_iter() {
+                    gui_handle.new_blob_from_file(self.id, blob_type, file);
+                }
             }
         }
     }

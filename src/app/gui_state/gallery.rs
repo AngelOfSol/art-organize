@@ -1,9 +1,10 @@
 use chrono::Local;
-use db::{BlobType, Db, Tag, TagCategory};
+use db::{BlobType, Tag, TagCategory};
 
-use super::{GuiHandle, GuiView};
+use super::{piece::PieceView, GuiHandle, GuiView};
 use crate::app::widgets::*;
 
+#[derive(Debug)]
 pub struct Gallery;
 
 impl GuiView for Gallery {
@@ -29,16 +30,14 @@ impl GuiView for Gallery {
                 piece::view(piece_id, &db, ui);
             })
         {
-            gui_handle.request_view_piece(db.pieces_for_blob(id).next().unwrap());
+            gui_handle.goto(PieceView {
+                id: db.pieces_for_blob(id).next().unwrap(),
+                edit: false,
+            });
         }
     }
 
-    fn draw_explorer(
-        &mut self,
-        gui_handle: &GuiHandle,
-        gui_state: &super::InnerGuiState,
-        ui: &imgui::Ui<'_>,
-    ) {
+    fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, ui: &imgui::Ui<'_>) {
         for i in 0..10u32 {
             let t = Tag {
                 name: format!("tag_{}", i),

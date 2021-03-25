@@ -22,7 +22,6 @@ mod cli;
 mod config;
 mod consts;
 mod gui;
-mod iter_ext;
 mod layout;
 mod loaders;
 mod raw_image;
@@ -86,7 +85,12 @@ async fn async_main() -> anyhow::Result<()> {
             let _ipc = start_server::<SubCommand>()?;
 
             let db_handle = start_db_task(db);
-            let gui_handle = start_gui_task(db_handle.clone(), gui_state.clone(), outgoing_images);
+            let gui_handle = start_gui_task(
+                db_handle.clone(),
+                gui_state.clone(),
+                outgoing_images,
+                incoming_files,
+            );
 
             let event_loop = EventLoop::new();
 
@@ -94,7 +98,6 @@ async fn async_main() -> anyhow::Result<()> {
                 incoming_images: rx,
                 gui_handle,
                 gui_state,
-                incoming_files,
             };
             let gui = GuiContext::create(&event_loop, outgoing_files).await?;
 
