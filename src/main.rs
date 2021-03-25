@@ -62,16 +62,12 @@ async fn async_main() -> anyhow::Result<()> {
                 contextual::remove()?;
             }
         },
-        cli::SubCommand::Add { path: _path, dir } => {
-            let root = config.data_dirs[dir].clone();
-            let mut _backend = DbBackend::from_path(root).await?;
-        }
         cli::SubCommand::Init { path } => {
             let root = path.unwrap_or(std::env::current_dir()?);
-            if !config.data_dirs.contains(&root) {
-                config.data_dirs.push(root.clone());
-                config.save().unwrap();
-            }
+
+            config.default_dir = Some(root.clone());
+
+            config.save().unwrap();
 
             let _ = DbBackend::init_at_path(root).await?;
         }
@@ -82,7 +78,7 @@ async fn async_main() -> anyhow::Result<()> {
         cli::SubCommand::Gui => {
             let (outgoing_images, rx) = mpsc::unbounded_channel();
             let (outgoing_files, incoming_files) = std::sync::mpsc::channel();
-            let root = config.data_dirs[0].clone();
+            let root = config.default_dir.unwrap_or(std::env::current_dir()?);
 
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
             let gui_state = Arc::new(RwLock::new(GuiState::default()));

@@ -154,7 +154,7 @@ async fn gui_actor(
                 let gui_state = gui_state.clone();
 
                 tokio::task::spawn_blocking(move || {
-                    let test = File::open(storage)
+                    let test = File::open(&storage)
                         .map_err(|err| err.into())
                         .and_then(|file| {
                             let file = BufReader::new(file);
@@ -168,7 +168,6 @@ async fn gui_actor(
                         }
                         Err(_) => {
                             let mut gui_state = gui_state.write().unwrap();
-                            dbg!("request failed");
                             gui_state.requested.remove(&blob_id);
                         }
                     }

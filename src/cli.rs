@@ -13,12 +13,7 @@ pub struct Opts {
 pub enum SubCommand {
     /// Creates a new database in the current working directory
     Init { path: Option<PathBuf> },
-    /// Add a new file to the database
-    Add {
-        path: PathBuf,
-        #[clap(default_value = "0")]
-        dir: usize,
-    },
+
     /// Updates file explorer context menus
     Contextual {
         #[clap(subcommand)]

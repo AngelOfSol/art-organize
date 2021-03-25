@@ -13,7 +13,6 @@ pub fn install() -> Result<()> {
 
     create_background_folder_submenu(&classes)?;
     create_background_folder_context_menu(&classes)?;
-    create_file_context_menu(&classes)?;
     Ok(())
 }
 
@@ -24,19 +23,6 @@ fn make_command(subcommand: &'static str) -> Result<String> {
         local_exe.to_str().unwrap(),
         subcommand
     ))
-}
-
-fn create_file_context_menu(classes: &RegKey) -> Result<()> {
-    create_shell_entry(
-        &classes,
-        ShellEntry {
-            name: r"*\shell\ArtOrganize",
-            label: "Add to ArtOrganize",
-            command: make_command(r#"add "%1""#)?,
-        },
-    )?;
-
-    Ok(())
 }
 
 fn create_background_folder_submenu(classes: &RegKey) -> Result<()> {
@@ -60,15 +46,6 @@ fn create_background_folder_context_menu(classes: &RegKey) -> Result<()> {
         },
     )?;
 
-    create_shell_entry(
-        &background,
-        ShellEntry {
-            name: "render",
-            label: "Render Blobs",
-            command: make_command(r#"render-blobs "%V""#)?,
-        },
-    )?;
-
     Ok(())
 }
 
@@ -86,7 +63,6 @@ pub fn remove() -> Result<()> {
         hkcu.open_subkey_with_flags(r"SOFTWARE\Classes", winreg::enums::KEY_ALL_ACCESS)?;
     let _ = classes.delete_subkey_all(r"Directory\Background\shell\ArtOrganize");
     let _ = classes.delete_subkey_all(r"ArtOrganize.Background");
-    let _ = classes.delete_subkey_all(r"*\shell\ArtOrganize");
 
     Ok(())
 }

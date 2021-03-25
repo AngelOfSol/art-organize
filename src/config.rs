@@ -11,14 +11,12 @@ lazy_static! {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Config {
-    pub data_dirs: Vec<PathBuf>,
+    pub default_dir: Option<PathBuf>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            data_dirs: Vec::new(),
-        }
+        Self { default_dir: None }
     }
 }
 fn get_file() -> PathBuf {
