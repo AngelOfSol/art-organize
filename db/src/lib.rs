@@ -117,6 +117,35 @@ impl Db {
     pub fn storage_for(&self, id: BlobId) -> PathBuf {
         self[id].storage_name(id)
     }
+
+    pub fn exists<Id: IdExist>(&self, id: Id) -> bool {
+        id.exists_in(self)
+    }
+}
+
+pub trait IdExist {
+    fn exists_in(self, db: &Db) -> bool;
+}
+
+impl IdExist for BlobId {
+    fn exists_in(self, db: &Db) -> bool {
+        db.blobs.has(self)
+    }
+}
+impl IdExist for PieceId {
+    fn exists_in(self, db: &Db) -> bool {
+        db.pieces.has(self)
+    }
+}
+impl IdExist for TagId {
+    fn exists_in(self, db: &Db) -> bool {
+        db.tags.has(self)
+    }
+}
+impl IdExist for TagCategoryId {
+    fn exists_in(self, db: &Db) -> bool {
+        db.tag_categories.has(self)
+    }
 }
 
 impl Index<PieceId> for Db {

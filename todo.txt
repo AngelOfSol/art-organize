@@ -54,24 +54,27 @@ categories have:
 - switch to dates over datetimes for data?
 - implement saving images to files on disk rather than storing in one file
     - file name = format!("[{}] {}", blob_id, blob.filename)
-
-v0.1 milestone
 - move modes to structs that impl a trait, that render two windows, main and sidebar
     - they return a new mode if any to switch to after the render ends
-- tooltips and help screen
-- right click blob:
-    - delete
-    - change type
-
-v0.2 and beyond
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
+
+v0.1 milestone
+- tooltips and help screen
+- blob:
+    - delete
+    - edit
+
+think about removing media type?
+
+v0.2 and beyond
 - implement adding tags
 - implement editing tags
 - implement viewing tag list
 - implement categories
 - implement searching
 - implement hyperlinks
+- add a statistics screen
 - add a settings screen
 - allow user to add contextual shell commands via the settings screen
 - add config/settings info to allow user to change style

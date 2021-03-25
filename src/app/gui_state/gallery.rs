@@ -8,6 +8,7 @@ use crate::app::widgets::*;
 pub struct Gallery;
 
 impl GuiView for Gallery {
+    fn update(&self, _: &super::GuiHandle) {}
     fn draw_main(
         &mut self,
         gui_handle: &GuiHandle,

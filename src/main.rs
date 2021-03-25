@@ -1,7 +1,7 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![feature(btree_retain)]
 
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc, Arc, RwLock};
 
 use app::{
     gui_state::{start_gui_task, GuiState},
@@ -13,7 +13,7 @@ use cli::SubCommand;
 use config::Config;
 use gui::{run_event_loop, GuiContext};
 use ipc::start_server;
-use tokio::{runtime::Builder, sync::mpsc};
+use tokio::runtime::Builder;
 use winit::event_loop::EventLoop;
 
 mod app;
@@ -75,8 +75,8 @@ async fn async_main() -> anyhow::Result<()> {
             config.save()?;
         }
         cli::SubCommand::Gui => {
-            let (outgoing_images, rx) = mpsc::unbounded_channel();
-            let (outgoing_files, incoming_files) = std::sync::mpsc::channel();
+            let (outgoing_images, rx) = mpsc::channel();
+            let (outgoing_files, incoming_files) = mpsc::channel();
             let root = config.default_dir.unwrap_or(std::env::current_dir()?);
 
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));

@@ -41,6 +41,10 @@ impl DerefMut for GuiState {
 }
 
 impl GuiState {
+    pub fn update(&self, gui_handle: &GuiHandle) {
+        self.view_stack.last().unwrap().update(gui_handle);
+    }
+
     pub fn render_main(&mut self, gui_handle: &GuiHandle, ui: &imgui::Ui<'_>) {
         self.view_stack
             .last_mut()
@@ -77,6 +81,8 @@ pub struct InnerGuiState {
 }
 
 pub trait GuiView: Sync + Send + Debug {
+    fn update(&self, gui_handle: &GuiHandle);
+
     fn draw_main(&mut self, gui_handle: &GuiHandle, gui_state: &InnerGuiState, ui: &imgui::Ui<'_>);
     fn draw_explorer(
         &mut self,
@@ -154,7 +160,7 @@ impl GuiHandle {
 pub fn start_gui_task(
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
-    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, bool)>,
+    outgoing_images: std_mpsc::Sender<(BlobId, RawImage, bool)>,
     incoming_files: std_mpsc::Receiver<PathBuf>,
 ) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
@@ -172,7 +178,7 @@ async fn gui_actor(
     mut incoming: mpsc::UnboundedReceiver<GuiAction>,
     db: DbHandle,
     gui_state: Arc<RwLock<GuiState>>,
-    outgoing_images: mpsc::UnboundedSender<(BlobId, RawImage, bool)>,
+    outgoing_images: std_mpsc::Sender<(BlobId, RawImage, bool)>,
 ) {
     while let Some(action) = incoming.recv().await {
         match action {
@@ -238,7 +244,9 @@ async fn gui_actor(
             }
             GuiAction::Back => {
                 let mut gui_state = gui_state.write().unwrap();
-                gui_state.view_stack.pop();
+                if gui_state.view_stack.len() > 1 {
+                    gui_state.view_stack.pop();
+                }
             }
             GuiAction::Push(state) => {
                 let mut gui_state = gui_state.write().unwrap();

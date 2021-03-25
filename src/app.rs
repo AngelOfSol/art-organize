@@ -10,9 +10,8 @@ use glam::Vec2;
 use imgui::{im_str, Key, MenuItem, MouseButton, Ui, Window};
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::{mpsc, Arc, RwLock},
 };
-use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
 pub mod gui_state;
@@ -23,13 +22,12 @@ use widgets::*;
 pub struct App {
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
-    pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, bool)>,
+    pub incoming_images: mpsc::Receiver<(BlobId, RawImage, bool)>,
 }
 
 impl App {
     pub fn update(&mut self, gui: &mut GuiContext) {
-        if let Some(Some((blob_id, raw, is_thumbnail))) = self.incoming_images.recv().now_or_never()
-        {
+        if let Ok((blob_id, raw, is_thumbnail)) = self.incoming_images.try_recv() {
             let image = TextureImage {
                 data: gui.load(&raw),
                 width: raw.width,
@@ -43,6 +41,8 @@ impl App {
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
         let mut gui_state = self.gui_state.write().unwrap();
+
+        gui_state.update(&self.gui_handle);
 
         let layout = {
             let mut layout_data = HashMap::new();

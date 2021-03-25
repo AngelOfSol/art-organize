@@ -10,6 +10,13 @@ pub struct BlobView {
 }
 
 impl GuiView for BlobView {
+    fn update(&self, gui_handle: &super::GuiHandle) {
+        let db = gui_handle.db.read().unwrap();
+        if !db.exists(self.id) {
+            gui_handle.go_back();
+        }
+    }
+
     fn draw_main(
         &mut self,
         gui_handle: &super::GuiHandle,
