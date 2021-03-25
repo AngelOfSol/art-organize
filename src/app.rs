@@ -44,10 +44,6 @@ impl App {
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {
         let mut gui_state = self.gui_state.write().unwrap();
 
-        let db = self.gui_handle.read().unwrap();
-
-        let gui_handle = &self.gui_handle;
-
         let layout = {
             let mut layout_data = HashMap::new();
             let layout = Column::default()
@@ -70,43 +66,46 @@ impl App {
 
             layout_data
         };
+        {
+            let db = self.gui_handle.read().unwrap();
 
-        if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
-            gui_handle.undo();
+            if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
+                self.gui_handle.undo();
+            }
+            if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
+                self.gui_handle.redo();
+            }
+
+            ui.main_menu_bar(|| {
+                ui.menu(im_str!("File"), || {
+                    if MenuItem::new(im_str!("New Piece")).build(ui) {
+                        self.gui_handle.request_new_piece();
+                    }
+                });
+                ui.menu(im_str!("Edit"), || {
+                    if MenuItem::new(im_str!("Undo"))
+                        .enabled(db.can_undo())
+                        .shortcut(im_str!("Ctrl+Z"))
+                        .build(ui)
+                    {
+                        self.gui_handle.undo();
+                    }
+                    if MenuItem::new(im_str!("Redo"))
+                        .enabled(db.can_redo())
+                        .shortcut(im_str!("Ctrl+Y"))
+                        .build(ui)
+                    {
+                        self.gui_handle.redo();
+                    }
+                });
+                ui.menu(im_str!("Debug"), || {
+                    MenuItem::new(im_str!("Styles")).build_with_ref(ui, &mut gui_state.show_styles);
+
+                    MenuItem::new(im_str!("Metrics"))
+                        .build_with_ref(ui, &mut gui_state.show_metrics);
+                });
+            });
         }
-        if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
-            gui_handle.redo();
-        }
-
-        ui.main_menu_bar(|| {
-            ui.menu(im_str!("File"), || {
-                if MenuItem::new(im_str!("New Piece")).build(ui) {
-                    gui_handle.request_new_piece();
-                }
-            });
-            ui.menu(im_str!("Edit"), || {
-                if MenuItem::new(im_str!("Undo"))
-                    .enabled(db.can_undo())
-                    .shortcut(im_str!("Ctrl+Z"))
-                    .build(ui)
-                {
-                    gui_handle.undo();
-                }
-                if MenuItem::new(im_str!("Redo"))
-                    .enabled(db.can_redo())
-                    .shortcut(im_str!("Ctrl+Y"))
-                    .build(ui)
-                {
-                    gui_handle.redo();
-                }
-            });
-            ui.menu(im_str!("Debug"), || {
-                MenuItem::new(im_str!("Styles")).build_with_ref(ui, &mut gui_state.show_styles);
-
-                MenuItem::new(im_str!("Metrics")).build_with_ref(ui, &mut gui_state.show_metrics);
-            });
-        });
-
         if gui_state.show_styles {
             ui.show_default_style_editor();
         }
@@ -153,9 +152,7 @@ impl App {
                 layout[&LayoutIds::Main].size.into(),
                 imgui::Condition::Always,
             )
-            .build(ui, || {
-                gui_state.render_main(&gui_handle, ui);
-            });
+            .build(ui, || gui_state.render_main(&self.gui_handle, ui));
 
         Window::new(im_str!("Tags"))
             .movable(false)
@@ -169,10 +166,10 @@ impl App {
                 layout[&LayoutIds::Tags].size.into(),
                 imgui::Condition::Always,
             )
-            .build(ui, || gui_state.render_explorer(&gui_handle, ui));
+            .build(ui, || gui_state.render_explorer(&self.gui_handle, ui));
 
         if ui.is_mouse_double_clicked(MouseButton::Right) {
-            gui_handle.go_back();
+            self.gui_handle.go_back();
         }
     }
 }

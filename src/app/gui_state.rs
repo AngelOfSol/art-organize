@@ -17,6 +17,8 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 
+use self::piece::PieceView;
+
 pub mod blob;
 pub mod gallery;
 pub mod piece;
@@ -175,16 +177,12 @@ async fn gui_actor(
     while let Some(action) = incoming.recv().await {
         match action {
             GuiAction::NewPiece => {
-                let _piece = db.new_piece().await.unwrap();
-                let mut _gui_state = gui_state.write().unwrap();
+                let id = db.new_piece().await.unwrap();
+                let mut gui_state = gui_state.write().unwrap();
 
-                todo!()
-
-                // gui_state.main_window = MainWindow::Piece {
-                //     id: piece,
-                //     edit: false,
-                //     focused: None,
-                // }
+                gui_state
+                    .view_stack
+                    .push(Box::new(PieceView { id, edit: false }));
             }
             GuiAction::RequestImage(blob_id) => {
                 let read = db.read().unwrap();
