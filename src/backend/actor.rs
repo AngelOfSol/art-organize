@@ -2,6 +2,7 @@ use std::{
     collections::hash_map::DefaultHasher,
     hash::{Hash, Hasher},
     ops::Deref,
+    path::PathBuf,
     sync::{Arc, RwLock},
 };
 
@@ -51,9 +52,18 @@ impl DbHandle {
             .unwrap();
         rx
     }
-    pub fn new_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
+    pub fn ask_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
         self.outgoing
-            .send(AppAction::Db(DbAction::AddBlob { to, blob_type }))
+            .send(AppAction::Db(DbAction::AskBlobs { to, blob_type }))
+            .unwrap();
+    }
+    pub fn new_blob_from_file(&self, to: PieceId, blob_type: BlobType, path: PathBuf) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::AddBlob {
+                to,
+                blob_type,
+                path,
+            }))
             .unwrap();
     }
 }
@@ -69,7 +79,15 @@ pub enum AppAction {
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
     EditPiece(EditPiece),
-    AddBlob { to: PieceId, blob_type: BlobType },
+    AskBlobs {
+        to: PieceId,
+        blob_type: BlobType,
+    },
+    AddBlob {
+        to: PieceId,
+        blob_type: BlobType,
+        path: PathBuf,
+    },
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
@@ -94,7 +112,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 let mut db = data.write().unwrap();
                 db.redo();
             }
-            AppAction::Db(DbAction::AddBlob { to, blob_type }) => {
+            AppAction::Db(DbAction::AskBlobs { to, blob_type }) => {
                 let data = data.clone();
                 tokio::spawn(async move {
                     let files = if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await
@@ -136,6 +154,36 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     save_data(&data).await;
                 });
             }
+            AppAction::Db(DbAction::AddBlob {
+                to,
+                blob_type,
+                path,
+            }) => {
+                let data = data.clone();
+                tokio::spawn(async move {
+                    let raw_data = fs::read(&path).await.unwrap();
+                    let mut hash = DefaultHasher::new();
+                    raw_data.hash(&mut hash);
+                    let hash = hash.finish();
+
+                    let blob = Blob {
+                        file_name: path.to_string_lossy().into(),
+                        hash,
+                        data: Arc::new(raw_data),
+                        blob_type,
+                        added: Local::now(),
+                    };
+
+                    {
+                        let mut db = data.write().unwrap();
+                        db.undo_checkpoint();
+
+                        let id = db.create_blob(blob);
+                        db.attach_blob(AttachBlob { src: to, dest: id });
+                    }
+                    save_data(&data).await;
+                });
+            }
             AppAction::Db(db_action) => {
                 let mut db = data.write().unwrap();
                 db.undo_checkpoint();
@@ -148,7 +196,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         let id = db.create_piece(Piece::default());
                         sender.send(id).unwrap();
                     }
-                    DbAction::AddBlob { .. } => unreachable!(),
+                    DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } => unreachable!(),
                 }
             }
         }

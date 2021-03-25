@@ -1,7 +1,11 @@
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
-use std::time::Instant;
+use std::{
+    path::PathBuf,
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 use wgpu::Extent3d;
 use winit::{
     dpi::LogicalSize,
@@ -13,6 +17,7 @@ use winit::{
 use crate::{app::App, raw_image::RawImage, style::modify_style};
 
 pub struct GuiContext {
+    outgoing_files: mpsc::Sender<PathBuf>,
     _instance: wgpu::Instance,
     queue: wgpu::Queue,
     surface: wgpu::Surface,
@@ -32,7 +37,7 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
 
         app.update(&mut context);
 
-        match event {
+        match &event {
             Event::WindowEvent {
                 event: WindowEvent::Resized(_),
                 ..
@@ -70,6 +75,12 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
             } => {
                 *control_flow = ControlFlow::Exit;
             }
+            Event::WindowEvent {
+                event: WindowEvent::DroppedFile(path),
+                ..
+            } => {
+                context.outgoing_files.send(path.clone()).unwrap();
+            }
             Event::MainEventsCleared => {
                 context.window.request_redraw();
             }
@@ -86,7 +97,10 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
 }
 
 impl GuiContext {
-    pub async fn create(event_loop: &EventLoop<()>) -> anyhow::Result<Self> {
+    pub async fn create(
+        event_loop: &EventLoop<()>,
+        outgoing_files: mpsc::Sender<PathBuf>,
+    ) -> anyhow::Result<Self> {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
 
         let (window, size, surface) = {
@@ -179,6 +193,7 @@ impl GuiContext {
             queue,
             last_frame: Instant::now(),
             last_cursor: None,
+            outgoing_files,
         })
     }
 

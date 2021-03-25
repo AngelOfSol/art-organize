@@ -4,15 +4,15 @@ use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use std::fmt::Display;
 use strum::IntoEnumIterator;
 
+use super::date;
+
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
     ui.text_wrapped(&im_str!("Name: {}", piece.name));
     ui.text_wrapped(&im_str!("Source Type: {}", piece.source_type));
     ui.text_wrapped(&im_str!("Media Type: {}", piece.media_type));
-    ui.text(im_str!(
-        "Date Added: {}",
-        piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
-    ));
+    date::view("Date Added", &piece.added.date(), ui);
+
     if let Some(price) = piece.base_price {
         ui.text(im_str!("Price: ${}", price));
     }
@@ -92,10 +92,18 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
         });
     }
 
-    ui.text(im_str!(
-        "Date Added: {}",
-        piece.added.format("%-m/%-d/%-Y %-H:%-M %P")
-    ));
+    if let Some(date) = date::edit(im_str!("Date Added"), &piece.added.date(), ui) {
+        return Some(EditPiece {
+            id: piece_id,
+            data: Piece {
+                added: date.and_hms(12, 0, 0),
+                ..piece.clone()
+            },
+        });
+    }
+    if ui.is_item_hovered() {
+        ui.tooltip_text("Format: Month/Day/Year\nHit enter to submit.");
+    }
 
     let mut buf = piece
         .base_price

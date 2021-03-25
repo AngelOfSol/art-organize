@@ -82,6 +82,7 @@ async fn async_main() -> anyhow::Result<()> {
         }
         cli::SubCommand::Gui => {
             let (outgoing_images, rx) = mpsc::unbounded_channel();
+            let (outgoing_files, incoming_files) = std::sync::mpsc::channel();
             let root = config.data_dirs[0].clone();
 
             let db = Arc::new(RwLock::new(DbBackend::from_path(root).await?));
@@ -99,8 +100,9 @@ async fn async_main() -> anyhow::Result<()> {
                 incoming_images: rx,
                 gui_handle,
                 gui_state,
+                incoming_files,
             };
-            let gui = GuiContext::create(&event_loop).await?;
+            let gui = GuiContext::create(&event_loop, outgoing_files).await?;
 
             run_event_loop(event_loop, gui, app);
         }

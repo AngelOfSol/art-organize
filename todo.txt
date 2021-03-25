@@ -48,12 +48,16 @@ categories have:
 - implement left right navigation when zoomed in on a blob
 - abstract all relevant gui code pertaining to db items
 - better image/thumbnail loading
-
 - add multiple blob loading
     - handle undo checkpointing properly
-
 - create date editor widget
+
+v0.1 milestone
+- implement saving images to files on disk rather than storing in one file
 - switch to dates over datetimes for data?
+- tooltips and help screen
+
+v0.2 and beyond
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
 - implement adding tags
@@ -61,52 +65,13 @@ categories have:
 - implement viewing tag list
 - implement categories
 - implement searching
-- implement saving images to files on disk rather than storing in one file
 - image/thumbnail invalidation based on matching the hashes.
 
 
 
-consider putting app_state behind a Mutex, so the gui thread can write to it
-
-put the DB behind an Arc<RwLock>?
-
-define right click to move up and down the hierachy
-
-in the piece itself, when expanding the view of an image, left and right arrow buttons should iterate through the available blob_ids for that category
-
-piece gallery:
-
-
-drag and drop from explorer onto the sections to add
-
-ui.text(Canon);
-ui.separator;
-ui.image repeatedly for each canon image
-
-ui.text(Variant)
-ui.separator;
-etc....
-
-
-
-undo history is saved on changes, for text boxes, its saved when item is deactivated_after_edit
-whenever undo history is saved, underlying db should also be saved
-
-
-piece/tag/blob data is edited inline
-associations are farmed out to message passing, so constraints can be handled
-ui state changes should be farmed out to message passing also
-
-have to decide still on how to navigate between different view types
-[tabs? view item in menu bar? side bar like tagspaces?]
-
-also need to use a better locking scheme, so that searches can proceed unimpeded
-
-todo, consider RwLockUpgradeable from parking lot
-
 
 tag syntax:
-tag = "tag" | "category:tag"
+tag = [a-zA-Z0-9_()-+]+
 
 search syntax
 search_list = item -> (" " -> item)*
@@ -120,11 +85,10 @@ media_type = "text" | "image"
 price = price_op -> number
 price_op = ">" | ">=" | ...
 
-date_added = date_op -> (date | date_time)
+date_added = date_op -> date 
 date_op = "before" | "after" | "on"
 
 date = anything chrono can parse
-date_time = anything chrono can parse
 
 modifiers = "-" 
 

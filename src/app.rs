@@ -10,9 +10,11 @@ use futures_util::FutureExt;
 use glam::Vec2;
 use gui_state::MainWindow;
 use imgui::{im_str, ChildWindow, CollapsingHeader, Key, MenuItem, MouseButton, Ui, Window};
+use std::sync::mpsc as std_mpsc;
 use std::{
     collections::HashMap,
     ops::DerefMut,
+    path::PathBuf,
     sync::{Arc, RwLock},
 };
 use strum::IntoEnumIterator;
@@ -20,6 +22,7 @@ use tokio::sync::mpsc;
 use winit::dpi::PhysicalSize;
 
 pub mod blob;
+pub mod date;
 pub mod gallery;
 pub mod gui_state;
 pub mod piece;
@@ -31,6 +34,7 @@ pub struct App {
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
     pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, bool)>,
+    pub incoming_files: std_mpsc::Receiver<PathBuf>,
 }
 
 impl App {
@@ -64,7 +68,7 @@ impl App {
                 .push(LayoutIds::SearchBar, Dimension::Pixels(40.0))
                 .push(
                     Row::default()
-                        .push(LayoutIds::Tags, Dimension::Pixels(240.0))
+                        .push(LayoutIds::Tags, Dimension::Pixels(300.0))
                         .push(LayoutIds::Main, Dimension::Flex(1.0)),
                     Dimension::Flex(1.0),
                 );
@@ -156,7 +160,6 @@ impl App {
                 };
                 drop(width);
             });
-
         Window::new(&im_str!("{}", gui_state.main_window))
             .movable(false)
             .resizable(false)
@@ -252,9 +255,22 @@ impl App {
                                             if ui
                                                 .button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2])
                                             {
-                                                db_handle.new_blobs_for_piece(*id, blob_type);
+                                                db_handle.ask_blobs_for_piece(*id, blob_type);
                                             };
                                         });
+                                }
+
+                                if ui.is_mouse_hovering_rect(
+                                    ui.item_rect_min(),
+                                    [
+                                        ui.cursor_screen_pos()[0] + ui.content_region_avail()[0],
+                                        ui.item_rect_max()[1],
+                                    ],
+                                ) {
+                                    for file in self.incoming_files.try_iter() {
+                                        dbg!(&file);
+                                        db_handle.new_blob_from_file(*id, blob_type, file);
+                                    }
                                 }
                             }
                         }
