@@ -1,17 +1,14 @@
 use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
     ops::Deref,
     path::PathBuf,
     sync::{Arc, RwLock},
 };
 
-use chrono::Local;
 use db::{
     commands::{AttachBlob, EditPiece},
-    Blob, BlobType, Db, Piece, PieceId,
+    BlobType, Db, Piece, PieceId,
 };
-use futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt};
+use futures_util::{stream::FuturesUnordered, StreamExt};
 use tokio::{
     fs,
     sync::{mpsc, oneshot},

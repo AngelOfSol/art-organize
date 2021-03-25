@@ -1,16 +1,11 @@
 use std::{
-    collections::hash_map::DefaultHasher,
-    hash::{Hash, Hasher},
     ops::{Deref, DerefMut},
     path::PathBuf,
-    sync::Arc,
 };
 
-use anyhow::anyhow;
-use chrono::Local;
 use tokio::fs;
 
-use db::{commands::AttachBlob, Blob, BlobId, BlobType, Db, Piece};
+use db::{BlobId, Db};
 
 pub mod actor;
 

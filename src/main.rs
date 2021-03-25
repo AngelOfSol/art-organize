@@ -62,9 +62,9 @@ async fn async_main() -> anyhow::Result<()> {
                 contextual::remove()?;
             }
         },
-        cli::SubCommand::Add { path, dir } => {
+        cli::SubCommand::Add { path: _path, dir } => {
             let root = config.data_dirs[dir].clone();
-            let mut backend = DbBackend::from_path(root).await?;
+            let mut _backend = DbBackend::from_path(root).await?;
         }
         cli::SubCommand::Init { path } => {
             let root = path.unwrap_or(std::env::current_dir()?);

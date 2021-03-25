@@ -7,7 +7,7 @@ use std::{
 };
 
 use db::{BlobId, PieceId};
-use tokio::{fs, sync::mpsc};
+use tokio::sync::mpsc;
 
 use crate::{
     backend::actor::DbHandle,
