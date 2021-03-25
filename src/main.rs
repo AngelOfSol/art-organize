@@ -65,7 +65,6 @@ async fn async_main() -> anyhow::Result<()> {
         cli::SubCommand::Add { path, dir } => {
             let root = config.data_dirs[dir].clone();
             let mut backend = DbBackend::from_path(root).await?;
-            backend.add_file(path).await?;
         }
         cli::SubCommand::Init { path } => {
             let root = path.unwrap_or(std::env::current_dir()?);

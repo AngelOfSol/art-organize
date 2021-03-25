@@ -10,7 +10,7 @@ use anyhow::anyhow;
 use chrono::Local;
 use tokio::fs;
 
-use db::{commands::AttachBlob, Blob, BlobType, Db, MaybeBlob, Piece};
+use db::{commands::AttachBlob, Blob, BlobId, BlobType, Db, Piece};
 
 pub mod actor;
 
@@ -70,82 +70,9 @@ impl DbBackend {
         Ok(ret)
     }
 
-    pub async fn _load_blob(&mut self, file: PathBuf) -> anyhow::Result<MaybeBlob> {
-        let file_name = file
-            .file_name()
-            .and_then(|x| x.to_str())
-            .ok_or_else(|| anyhow!("invalid file name: {:?}", file.file_name()))?;
-
-        let data = Arc::new(fs::read(&file).await?);
-
-        let mut hasher = DefaultHasher::new();
-        data.hash(&mut hasher);
-        let hash = hasher.finish();
-
-        let blob_id = self
-            .blobs()
-            .find(|(_, blob)| blob.hash == hash)
-            .map(|(id, _)| id)
-            .filter(|id| self.inner[*id].data == data);
-
-        if let Some(blob_id) = blob_id {
-            Ok(MaybeBlob::Id(blob_id))
-        } else {
-            Ok(MaybeBlob::Value(Blob {
-                file_name: file_name.to_string(),
-                hash,
-                data,
-                blob_type: BlobType::Canon,
-                added: Local::today().naive_local(),
-            }))
-        }
-    }
-
-    pub async fn add_file(&mut self, file: PathBuf) -> anyhow::Result<()> {
-        let file_name = file
-            .file_name()
-            .and_then(|x| x.to_str())
-            .ok_or_else(|| anyhow!("invalid file name: {:?}", file.file_name()))?;
-
-        let piece = Piece {
-            name: file_name.to_owned(),
-            ..Piece::default()
-        };
-
-        let piece_id = self.create_piece(piece);
-
-        let data = Arc::new(fs::read(&file).await?);
-
-        let mut hasher = DefaultHasher::new();
-        data.hash(&mut hasher);
-        let hash = hasher.finish();
-
-        let blob_id = self
-            .blobs()
-            .find(|(_, blob)| blob.hash == hash)
-            .map(|(id, _)| id)
-            .filter(|id| self.inner[*id].data == data);
-
-        let blob_id = if let Some(blob_id) = blob_id {
-            blob_id
-        } else {
-            // self.blobs.insert(Blob {
-            //     file_name: file_name.to_string(),
-            //     hash,
-            //     data,
-            //     blob_type: BlobType::Canon,
-            //     added: Local::now(),
-            // })
-            panic!()
-        };
-
-        self.inner.attach_blob(AttachBlob {
-            src: piece_id,
-            dest: blob_id,
-        });
-
-        self.save().await?;
-
-        Ok(())
+    pub fn storage_for(&self, id: BlobId) -> PathBuf {
+        let mut temp = self.root.clone();
+        temp.push(self.inner.storage_for(id));
+        temp
     }
 }

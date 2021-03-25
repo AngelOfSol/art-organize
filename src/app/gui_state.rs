@@ -1,11 +1,13 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Display,
+    fs::File,
+    io::BufReader,
     sync::{Arc, RwLock},
 };
 
 use db::{BlobId, PieceId};
-use tokio::sync::mpsc;
+use tokio::{fs, sync::mpsc};
 
 use crate::{
     backend::actor::DbHandle,
@@ -133,23 +135,42 @@ async fn gui_actor(
                 }
             }
             GuiAction::RequestImage(blob_id) => {
-                let mut gui_state = gui_state.write().unwrap();
-                // TODO check hashes matching
-                if gui_state.requested.contains(&blob_id) {
-                    continue;
-                } else {
-                    gui_state.requested.insert(blob_id);
+                let read = db.read().unwrap();
+
+                {
+                    let mut gui_state = gui_state.write().unwrap();
+                    if gui_state.requested.contains(&blob_id) {
+                        continue;
+                    } else {
+                        gui_state.requested.insert(blob_id);
+                    }
                 }
-                let (rc, hash) = {
-                    let read = db.read().unwrap();
-                    (read[blob_id].data.clone(), read[blob_id].hash)
-                };
+
+                let hash = read[blob_id].hash;
+                let storage = read.storage_for(blob_id);
+
                 let outgoing_images = outgoing_images.clone();
 
+                let gui_state = gui_state.clone();
+
                 tokio::task::spawn_blocking(move || {
-                    if let Ok((raw, thumb)) = RawImage::make(&rc, hash) {
-                        outgoing_images.send((blob_id, thumb, true)).unwrap();
-                        outgoing_images.send((blob_id, raw, false)).unwrap();
+                    let test = File::open(storage)
+                        .map_err(|err| err.into())
+                        .and_then(|file| {
+                            let file = BufReader::new(file);
+                            RawImage::make(file, hash)
+                        });
+
+                    match test {
+                        Ok((raw, thumb)) => {
+                            outgoing_images.send((blob_id, thumb, true)).unwrap();
+                            outgoing_images.send((blob_id, raw, false)).unwrap();
+                        }
+                        Err(_) => {
+                            let mut gui_state = gui_state.write().unwrap();
+                            dbg!("request failed");
+                            gui_state.requested.remove(&blob_id);
+                        }
                     }
                 });
             }

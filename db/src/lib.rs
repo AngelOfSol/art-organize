@@ -1,5 +1,5 @@
 pub use self::{
-    blob::{Blob, BlobId, BlobType, MaybeBlob},
+    blob::{Blob, BlobId, BlobType},
     contained_piece::ContainedPiece,
     media_type::MediaType,
     piece::{Piece, PieceId},
@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     ops::Index,
+    path::PathBuf,
 };
 use table::Table;
 
@@ -111,6 +112,10 @@ impl Db {
     }
     pub fn tag_categories(&self) -> impl Iterator<Item = (TagCategoryId, &'_ TagCategory)> {
         self.tag_categories.iter()
+    }
+
+    pub fn storage_for(&self, id: BlobId) -> PathBuf {
+        self[id].storage_name(id)
     }
 }
 

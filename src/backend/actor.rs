@@ -11,11 +11,13 @@ use db::{
     commands::{AttachBlob, EditPiece},
     Blob, BlobType, Db, Piece, PieceId,
 };
-use futures_util::{stream::FuturesUnordered, StreamExt};
+use futures_util::{stream::FuturesUnordered, StreamExt, TryStreamExt};
 use tokio::{
     fs,
     sync::{mpsc, oneshot},
 };
+
+use crate::app::blob;
 
 use super::{data_file, DbBackend};
 
@@ -126,31 +128,31 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         .into_iter()
                         .map(|file| async move {
                             let file = file.path().to_path_buf();
-                            let raw_data = fs::read(&file).await.unwrap();
-                            let mut hash = DefaultHasher::new();
-                            raw_data.hash(&mut hash);
-                            let hash = hash.finish();
 
-                            Blob {
-                                file_name: file.to_string_lossy().into(),
-                                hash,
-                                data: Arc::new(raw_data),
-                                blob_type,
-                                added: Local::today().naive_local(),
-                            }
+                            Ok::<_, anyhow::Error>((
+                                file.clone(),
+                                blob::from_path(file, blob_type).await?,
+                            ))
                         })
                         .collect();
                     let files: Vec<_> = file_futures.collect().await;
 
+                    let mut out_futures = FuturesUnordered::new();
                     {
                         let mut db = data.write().unwrap();
                         db.undo_checkpoint();
 
-                        for blob in files {
+                        for (path, blob) in files.into_iter().filter_map(Result::ok) {
                             let id = db.create_blob(blob);
+
                             db.attach_blob(AttachBlob { src: to, dest: id });
+                            out_futures.push(fs::copy(path, db.storage_for(id)));
                         }
                     }
+                    while let Some(result) = out_futures.next().await {
+                        result.unwrap();
+                    }
+
                     save_data(&data).await;
                 });
             }
@@ -161,26 +163,18 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
             }) => {
                 let data = data.clone();
                 tokio::spawn(async move {
-                    let raw_data = fs::read(&path).await.unwrap();
-                    let mut hash = DefaultHasher::new();
-                    raw_data.hash(&mut hash);
-                    let hash = hash.finish();
+                    let blob = blob::from_path(path.clone(), blob_type).await.unwrap();
 
-                    let blob = Blob {
-                        file_name: path.to_string_lossy().into(),
-                        hash,
-                        data: Arc::new(raw_data),
-                        blob_type,
-                        added: Local::today().naive_local(),
-                    };
-
-                    {
+                    let storage = {
                         let mut db = data.write().unwrap();
                         db.undo_checkpoint();
 
                         let id = db.create_blob(blob);
+
                         db.attach_blob(AttachBlob { src: to, dest: id });
-                    }
+                        db.storage_for(id)
+                    };
+                    fs::copy(path, storage).await.unwrap();
                     save_data(&data).await;
                 });
             }

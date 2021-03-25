@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use slab::Slab;
-use std::{collections::BTreeMap, marker::PhantomData, ops::Index};
+use std::{collections::BTreeMap, fmt::Display, marker::PhantomData, ops::Index};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TableId<T>(usize, PhantomData<T>);
@@ -40,6 +40,12 @@ impl<T> PartialOrd for TableId<T> {
 impl<T> Ord for TableId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl<T> Display for TableId<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

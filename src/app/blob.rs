@@ -1,4 +1,11 @@
-use db::{BlobId, Db};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+    path::PathBuf,
+};
+
+use chrono::Local;
+use db::{Blob, BlobId, BlobType, Db};
 use imgui::{im_str, ImStr, Ui};
 
 use crate::{
@@ -6,15 +13,29 @@ use crate::{
     raw_image::TextureImage,
 };
 
+use super::date;
+
+pub async fn from_path(path: PathBuf, blob_type: BlobType) -> anyhow::Result<Blob> {
+    let raw_data = tokio::fs::read(&path).await?;
+    let mut hash = DefaultHasher::new();
+    raw_data.hash(&mut hash);
+    let hash = hash.finish();
+
+    Ok(Blob {
+        file_name: path.file_name().unwrap().to_string_lossy().into_owned(),
+        hash,
+        blob_type,
+        added: Local::today().naive_local(),
+    })
+}
+
+// TODO rename tooltip view?
 pub fn view(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
     let blob = &db[blob_id];
-    ui.text_wrapped(&im_str!("File Name: {}", blob.file_name));
-    ui.text_wrapped(&im_str!("Blob Type: {}", blob.blob_type));
-    ui.text_wrapped(&im_str!("Hash: {:x}", blob.hash));
-    ui.text(im_str!(
-        "Date Added: {}",
-        blob.added.format("%-m/%-d/%-Y %-H:%-M %P")
-    ));
+    ui.text(&im_str!("File Name: {}", blob.file_name));
+    ui.text(&im_str!("Blob Type: {}", blob.blob_type));
+    ui.text(&im_str!("Hash: {:x}", blob.hash));
+    date::view("Added", &blob.added, ui);
 }
 
 pub enum ThumbnailResponse {

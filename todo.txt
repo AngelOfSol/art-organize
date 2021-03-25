@@ -51,10 +51,11 @@ categories have:
 - add multiple blob loading
     - handle undo checkpointing properly
 - create date editor widget
+- switch to dates over datetimes for data?
+- implement saving images to files on disk rather than storing in one file
+    - file name = format!("[{}] {}", blob_id, blob.filename)
 
 v0.1 milestone
-- implement saving images to files on disk rather than storing in one file
-- switch to dates over datetimes for data?
 - tooltips and help screen
 
 v0.2 and beyond
