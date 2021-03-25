@@ -56,6 +56,8 @@ categories have:
     - file name = format!("[{}] {}", blob_id, blob.filename)
 
 v0.1 milestone
+- move modes to structs that impl a trait, that render two windows, main and sidebar
+    - they return a new mode if any to switch to after the render ends
 - tooltips and help screen
 
 v0.2 and beyond
@@ -66,6 +68,10 @@ v0.2 and beyond
 - implement viewing tag list
 - implement categories
 - implement searching
+- implement hyperlinks
+- add a settings screen
+- allow user to add contextual shell commands via the settings screen
+- add config/settings info to allow user to change style
 - image/thumbnail invalidation based on matching the hashes.
 
 

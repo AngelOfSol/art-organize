@@ -32,6 +32,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
             added: Local::today().naive_local(),
+            ..TagCategory::default()
         };
         let raw_color = [
             tg.color[0] as f32 / 255.0,
@@ -174,6 +175,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
             added: Local::today().naive_local(),
+            ..TagCategory::default()
         };
 
         for j in 0..2 {

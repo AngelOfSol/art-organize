@@ -12,6 +12,7 @@ pub struct Piece {
     pub source_type: SourceType,
     pub media_type: MediaType,
     pub added: NaiveDate,
+    pub links: Vec<String>,
     pub base_price: Option<i64>,
     pub tip_price: Option<i64>,
 }
@@ -25,6 +26,7 @@ impl Default for Piece {
             added: Local::today().naive_local(),
             base_price: None,
             tip_price: None,
+            links: Vec::new(),
         }
     }
 }

@@ -195,7 +195,7 @@ async fn gui_actor(
                     if let Some(blob_id) = focused {
                         if let Some(new) = iter_ext::prev(
                             db.blobs_for_piece(*id)
-                                .filter(|blob| db[*blob].blob_type == db[*blob_id].blob_type),
+                                .filter(|blob| db[blob].blob_type == db[*blob_id].blob_type),
                             *blob_id,
                         ) {
                             *focused = Some(new);

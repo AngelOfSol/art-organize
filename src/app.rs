@@ -176,9 +176,14 @@ impl App {
             )
             .build(ui, || match &mut gui_state.main_window {
                 MainWindow::Gallery => {
-                    let blobs = db
-                        .pieces()
-                        .filter_map(|(id, _)| db.blobs_for_piece(id).next());
+                    let blobs = db.pieces().filter_map(|(id, _)| {
+                        //
+                        let mut blobs = db.blobs_for_piece(id);
+                        blobs
+                            .clone()
+                            .find(|id| db[id].blob_type == BlobType::Canon)
+                            .or_else(|| blobs.find(|id| db[id].blob_type == BlobType::Variant))
+                    });
 
                     if let Some(id) = gallery::render(
                         ui,
@@ -232,7 +237,7 @@ impl App {
                                         ui,
                                         blob_ids
                                             .clone()
-                                            .filter(|blob| db[*blob].blob_type == blob_type),
+                                            .filter(|blob| db[blob].blob_type == blob_type),
                                         &gui_handle,
                                         &gui_state.thumbnails,
                                         |blob_id, ui| {
@@ -323,6 +328,7 @@ impl App {
                             name: format!("category_{}", i),
                             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
                             added: Local::today().naive_local(),
+                            ..TagCategory::default()
                         };
 
                         tag::gallery(ui, &t, &tg);

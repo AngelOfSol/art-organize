@@ -143,10 +143,13 @@ impl Index<TagId> for Db {
     }
 }
 
-impl Index<TagCategoryId> for Db {
-    type Output = TagCategory;
+impl<'a, T: Copy> Index<&'a T> for Db
+where
+    Db: Index<T>,
+{
+    type Output = <Db as Index<T>>::Output;
 
-    fn index(&self, index: TagCategoryId) -> &Self::Output {
-        &self.tag_categories[index]
+    fn index(&self, index: &'a T) -> &Self::Output {
+        self.index(*index)
     }
 }

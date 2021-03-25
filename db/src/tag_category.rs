@@ -8,6 +8,7 @@ pub type TagCategoryId = TableId<TagCategory>;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct TagCategory {
     pub name: String,
+    pub description: String,
     pub color: [u8; 4],
     pub added: NaiveDate,
 }
@@ -27,6 +28,7 @@ impl Default for TagCategory {
     fn default() -> Self {
         Self {
             name: "New Tag Category".to_string(),
+            description: String::new(),
             color: [0; 4],
             added: Local::today().naive_local(),
         }
