@@ -1,11 +1,7 @@
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
-use std::{
-    path::PathBuf,
-    sync::mpsc,
-    time::{Duration, Instant},
-};
+use std::{path::PathBuf, sync::mpsc, time::Instant};
 use wgpu::Extent3d;
 use winit::{
     dpi::LogicalSize,

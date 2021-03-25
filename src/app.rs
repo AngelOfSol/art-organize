@@ -5,6 +5,7 @@ use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
 };
+use chrono::Local;
 use db::{BlobId, BlobType, Tag, TagCategory};
 use futures_util::FutureExt;
 use glam::Vec2;
@@ -315,13 +316,13 @@ impl App {
                         let t = Tag {
                             name: format!("tag_{}", i),
                             description: format!("My test description {}", i),
-                            added: chrono::Local::now(),
+                            added: Local::today().naive_local(),
                             links: Vec::new(),
                         };
                         let tg = TagCategory {
                             name: format!("category_{}", i),
                             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-                            added: chrono::Local::now(),
+                            added: Local::today().naive_local(),
                         };
 
                         tag::gallery(ui, &t, &tg);

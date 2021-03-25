@@ -1,11 +1,11 @@
-use chrono::{Date, Datelike, Local, NaiveDate, TimeZone};
+use chrono::NaiveDate;
 use imgui::{im_str, ImStr, Ui};
 
-pub fn view(label: &str, value: &Date<Local>, ui: &Ui<'_>) {
+pub fn view(label: &str, value: &NaiveDate, ui: &Ui<'_>) {
     ui.text(im_str!("{}: {}", label, value.format("%-m/%-d/%-Y")));
 }
 
-pub fn edit(label: &ImStr, value: &Date<Local>, ui: &Ui<'_>) -> Option<Date<Local>> {
+pub fn edit(label: &ImStr, value: &NaiveDate, ui: &Ui<'_>) -> Option<NaiveDate> {
     let mut buf = im_str!("{}", value.format("%-m/%-d/%-Y"));
 
     if ui
@@ -13,14 +13,7 @@ pub fn edit(label: &ImStr, value: &Date<Local>, ui: &Ui<'_>) -> Option<Date<Loca
         .enter_returns_true(true)
         .build()
     {
-        let local = NaiveDate::parse_from_str(buf.to_str(), "%m/%d/%Y").ok()?;
-        if local.year() >= 2000 {
-            Local
-                .ymd_opt(local.year(), local.month(), local.day())
-                .latest()
-        } else {
-            None
-        }
+        NaiveDate::parse_from_str(buf.to_str(), "%m/%d/%Y").ok()
     } else {
         None
     }

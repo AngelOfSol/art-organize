@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 
 use crate::table::TableId;
@@ -9,7 +9,7 @@ pub type TagCategoryId = TableId<TagCategory>;
 pub struct TagCategory {
     pub name: String,
     pub color: [u8; 4],
-    pub added: DateTime<Local>,
+    pub added: NaiveDate,
 }
 
 impl TagCategory {
@@ -28,7 +28,7 @@ impl Default for TagCategory {
         Self {
             name: "New Tag Category".to_string(),
             color: [0; 4],
-            added: Local::now(),
+            added: Local::today().naive_local(),
         }
     }
 }

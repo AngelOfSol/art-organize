@@ -96,7 +96,7 @@ impl DbBackend {
                 hash,
                 data,
                 blob_type: BlobType::Canon,
-                added: Local::now(),
+                added: Local::today().naive_local(),
             }))
         }
     }

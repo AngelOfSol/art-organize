@@ -1,4 +1,5 @@
 use crate::app::{tag, tag_category};
+use chrono::Local;
 use db::{commands::EditPiece, Db, Piece, PieceId, Tag, TagCategory};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use std::fmt::Display;
@@ -11,7 +12,7 @@ pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     ui.text_wrapped(&im_str!("Name: {}", piece.name));
     ui.text_wrapped(&im_str!("Source Type: {}", piece.source_type));
     ui.text_wrapped(&im_str!("Media Type: {}", piece.media_type));
-    date::view("Date Added", &piece.added.date(), ui);
+    date::view("Date Added", &piece.added, ui);
 
     if let Some(price) = piece.base_price {
         ui.text(im_str!("Price: ${}", price));
@@ -30,7 +31,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
         let tg = TagCategory {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-            added: chrono::Local::now(),
+            added: Local::today().naive_local(),
         };
         let raw_color = [
             tg.color[0] as f32 / 255.0,
@@ -45,7 +46,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
             let t = Tag {
                 name: format!("tag_{}", j),
                 description: format!("My test description {}", j),
-                added: chrono::Local::now(),
+                added: Local::today().naive_local(),
                 links: Vec::new(),
             };
             tag::view(ui, &t, &tg);
@@ -92,11 +93,11 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
         });
     }
 
-    if let Some(date) = date::edit(im_str!("Date Added"), &piece.added.date(), ui) {
+    if let Some(date) = date::edit(im_str!("Date Added"), &piece.added, ui) {
         return Some(EditPiece {
             id: piece_id,
             data: Piece {
-                added: date.and_hms(12, 0, 0),
+                added: date,
                 ..piece.clone()
             },
         });
@@ -172,14 +173,14 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPiece> {
         let tg = TagCategory {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-            added: chrono::Local::now(),
+            added: Local::today().naive_local(),
         };
 
         for j in 0..2 {
             let t = Tag {
                 name: format!("tag_{}", j),
                 description: format!("My test description {}", j),
-                added: chrono::Local::now(),
+                added: Local::today().naive_local(),
                 links: Vec::new(),
             };
             tag::edit(ui, &t, &tg);

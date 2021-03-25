@@ -1,5 +1,5 @@
 use crate::table::TableId;
-use chrono::{DateTime, Local};
+use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
 
 pub type TagId = TableId<Tag>;
@@ -8,7 +8,7 @@ pub type TagId = TableId<Tag>;
 pub struct Tag {
     pub name: String,
     pub description: String,
-    pub added: DateTime<Local>,
+    pub added: NaiveDate,
     pub links: Vec<String>,
 }
 impl Default for Tag {
@@ -16,7 +16,7 @@ impl Default for Tag {
         Self {
             name: "New Tag".to_string(),
             description: String::new(),
-            added: Local::now(),
+            added: Local::today().naive_local(),
             links: Vec::new(),
         }
     }

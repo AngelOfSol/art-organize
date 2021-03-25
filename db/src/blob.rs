@@ -1,6 +1,6 @@
 use std::{fmt::Display, sync::Arc};
 
-use chrono::{DateTime, Local};
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 use crate::table::{MaybeEntry, TableId};
@@ -16,7 +16,7 @@ pub struct Blob {
     #[serde(with = "raw_data")]
     pub data: Arc<Vec<u8>>,
     pub blob_type: BlobType,
-    pub added: DateTime<Local>,
+    pub added: NaiveDate,
 }
 
 mod raw_data {

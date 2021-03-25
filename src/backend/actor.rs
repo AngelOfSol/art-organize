@@ -136,7 +136,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                                 hash,
                                 data: Arc::new(raw_data),
                                 blob_type,
-                                added: Local::now(),
+                                added: Local::today().naive_local(),
                             }
                         })
                         .collect();
@@ -171,7 +171,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         hash,
                         data: Arc::new(raw_data),
                         blob_type,
-                        added: Local::now(),
+                        added: Local::today().naive_local(),
                     };
 
                     {
