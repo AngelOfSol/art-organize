@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     fs::File,
     io::BufReader,
+    ops::Deref,
     sync::{Arc, RwLock},
 };
 
@@ -15,20 +16,44 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 
+pub mod blob;
+pub mod gallery;
+pub mod piece;
+
 #[derive(Default, Clone, PartialEq, Eq)]
 pub struct GuiState {
     pub main_window: MainWindow,
+    pub inner: InnerGuiState,
+}
 
-    pub search: SearchState,
-
+#[derive(Default, Clone, PartialEq, Eq)]
+pub struct InnerGuiState {
     pub show_styles: bool,
     pub show_metrics: bool,
 
+    pub search: SearchState,
     pub thumbnails: BTreeMap<BlobId, TextureImage>,
     pub images: BTreeMap<BlobId, TextureImage>,
 
     requested: BTreeSet<BlobId>,
 }
+
+pub struct StateRef<'a> {
+    pub search: &'a SearchState,
+    pub thumbnails: &'a BTreeMap<BlobId, TextureImage>,
+    pub images: &'a BTreeMap<BlobId, TextureImage>,
+}
+
+pub trait GuiView {
+    fn draw_main(&mut self, gui_handle: &GuiHandle, gui_state: &InnerGuiState, ui: &imgui::Ui<'_>);
+    fn draw_explorer(
+        &mut self,
+        gui_handle: &GuiHandle,
+        gui_state: &InnerGuiState,
+        ui: &imgui::Ui<'_>,
+    );
+}
+
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SearchState {
     pub text: String,
@@ -62,6 +87,14 @@ pub enum GuiAction {
 
 pub struct GuiHandle {
     outgoing: mpsc::UnboundedSender<GuiAction>,
+    db: DbHandle,
+}
+
+impl Deref for GuiHandle {
+    type Target = DbHandle;
+    fn deref(&self) -> &Self::Target {
+        &self.db
+    }
 }
 
 impl GuiHandle {
@@ -104,9 +137,9 @@ pub fn start_gui_task(
 ) -> GuiHandle {
     let (tx, rx) = mpsc::unbounded_channel();
 
-    tokio::spawn(gui_actor(rx, db, gui_state, outgoing_images));
+    tokio::spawn(gui_actor(rx, db.clone(), gui_state, outgoing_images));
 
-    GuiHandle { outgoing: tx }
+    GuiHandle { outgoing: tx, db }
 }
 
 async fn gui_actor(
@@ -139,10 +172,10 @@ async fn gui_actor(
 
                 {
                     let mut gui_state = gui_state.write().unwrap();
-                    if gui_state.requested.contains(&blob_id) {
+                    if gui_state.inner.requested.contains(&blob_id) {
                         continue;
                     } else {
-                        gui_state.requested.insert(blob_id);
+                        gui_state.inner.requested.insert(blob_id);
                     }
                 }
 
@@ -168,7 +201,7 @@ async fn gui_actor(
                         }
                         Err(_) => {
                             let mut gui_state = gui_state.write().unwrap();
-                            gui_state.requested.remove(&blob_id);
+                            gui_state.inner.requested.remove(&blob_id);
                         }
                     }
                 });
@@ -210,9 +243,9 @@ async fn gui_actor(
             } => {
                 let mut gui_state = gui_state.write().unwrap();
                 if is_thumbnail {
-                    gui_state.thumbnails.insert(blob_id, image);
+                    gui_state.inner.thumbnails.insert(blob_id, image);
                 } else {
-                    gui_state.images.insert(blob_id, image);
+                    gui_state.inner.images.insert(blob_id, image);
                 }
             }
         }

@@ -91,7 +91,6 @@ async fn async_main() -> anyhow::Result<()> {
             let event_loop = EventLoop::new();
 
             let app = App {
-                handle: db_handle,
                 incoming_images: rx,
                 gui_handle,
                 gui_state,

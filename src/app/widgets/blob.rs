@@ -5,7 +5,7 @@ use std::{
 };
 
 use chrono::Local;
-use db::{Blob, BlobId, BlobType, Db};
+use db::{commands::EditBlob, Blob, BlobId, BlobType, Db};
 use imgui::{im_str, ImStr, Ui};
 
 use crate::{
@@ -15,13 +15,30 @@ use crate::{
 
 use super::date;
 
-// TODO rename tooltip view?
-pub fn view(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
+pub fn tooltip(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
     let blob = &db[blob_id];
     ui.text(&im_str!("File Name: {}", blob.file_name));
     ui.text(&im_str!("Blob Type: {}", blob.blob_type));
     ui.text(&im_str!("Hash: {:x}", blob.hash));
     date::view("Added", &blob.added, ui);
+}
+
+pub fn view(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
+    let blob = &db[blob_id];
+    ui.text_wrapped(&im_str!("File Name: {}", blob.file_name));
+    ui.text_wrapped(&im_str!("Blob Type: {}", blob.blob_type));
+    ui.text_wrapped(&im_str!("Hash: {:x}", blob.hash));
+    date::view("Added", &blob.added, ui);
+}
+
+pub fn edit(blob_id: BlobId, db: &Db, ui: &Ui<'_>) -> Option<EditBlob> {
+    let blob = &db[blob_id];
+    ui.text_wrapped(&im_str!("File Name: {}", blob.file_name));
+    ui.text_wrapped(&im_str!("Blob Type: {}", blob.blob_type));
+    ui.text_wrapped(&im_str!("Hash: {:x}", blob.hash));
+    date::view("Added", &blob.added, ui);
+
+    None
 }
 
 pub enum ThumbnailResponse {

@@ -59,6 +59,9 @@ v0.1 milestone
 - move modes to structs that impl a trait, that render two windows, main and sidebar
     - they return a new mode if any to switch to after the render ends
 - tooltips and help screen
+- right click blob:
+    - delete
+    - change type
 
 v0.2 and beyond
 - create blob editing

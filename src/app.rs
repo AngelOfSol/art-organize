@@ -1,6 +1,6 @@
 use self::gui_state::{GuiHandle, GuiState};
+use crate::consts::*;
 use crate::layout::{Column, Dimension, LayoutIds, LayoutRectangle, Row};
-use crate::{backend::actor::DbHandle, consts::*};
 use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
@@ -28,7 +28,6 @@ pub mod widgets;
 use widgets::*;
 
 pub struct App {
-    pub handle: DbHandle,
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
     pub incoming_images: mpsc::UnboundedReceiver<(BlobId, RawImage, bool)>,
@@ -54,9 +53,8 @@ impl App {
         let mut gui_state = self.gui_state.write().unwrap();
         let gui_state = gui_state.deref_mut();
 
-        let db = self.handle.read().unwrap();
+        let db = self.gui_handle.read().unwrap();
 
-        let db_handle = &self.handle;
         let gui_handle = &self.gui_handle;
 
         let layout = {
@@ -83,10 +81,10 @@ impl App {
         };
 
         if ui.is_key_pressed_no_repeat(Key::Z) && ui.io().key_ctrl && db.can_undo() {
-            db_handle.undo();
+            gui_handle.undo();
         }
         if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
-            db_handle.redo();
+            gui_handle.redo();
         }
 
         if ui.is_key_pressed(Key::RightArrow) {
@@ -108,28 +106,30 @@ impl App {
                     .shortcut(im_str!("Ctrl+Z"))
                     .build(ui)
                 {
-                    db_handle.undo();
+                    gui_handle.undo();
                 }
                 if MenuItem::new(im_str!("Redo"))
                     .enabled(db.can_redo())
                     .shortcut(im_str!("Ctrl+Y"))
                     .build(ui)
                 {
-                    db_handle.redo();
+                    gui_handle.redo();
                 }
             });
             ui.menu(im_str!("Debug"), || {
-                MenuItem::new(im_str!("Styles")).build_with_ref(ui, &mut gui_state.show_styles);
+                MenuItem::new(im_str!("Styles"))
+                    .build_with_ref(ui, &mut gui_state.inner.show_styles);
 
-                MenuItem::new(im_str!("Metrics")).build_with_ref(ui, &mut gui_state.show_metrics);
+                MenuItem::new(im_str!("Metrics"))
+                    .build_with_ref(ui, &mut gui_state.inner.show_metrics);
             });
         });
 
-        if gui_state.show_styles {
+        if gui_state.inner.show_styles {
             ui.show_default_style_editor();
         }
-        if gui_state.show_metrics {
-            ui.show_metrics_window(&mut gui_state.show_metrics);
+        if gui_state.inner.show_metrics {
+            ui.show_metrics_window(&mut gui_state.inner.show_metrics);
         }
 
         Window::new(im_str!("Search"))
@@ -147,14 +147,14 @@ impl App {
             )
             .build(ui, || {
                 let width = ui.push_item_width(-1.0);
-                let mut buf = gui_state.search.text.clone().into();
+                let mut buf = gui_state.inner.search.text.clone().into();
                 if ui
                     .input_text(im_str!("##Search Input"), &mut buf)
                     .resize_buffer(true)
                     .hint(im_str!("Search"))
                     .build()
                 {
-                    gui_state.search.text = buf.to_string();
+                    gui_state.inner.search.text = buf.to_string();
                 };
                 drop(width);
             });
@@ -174,7 +174,6 @@ impl App {
             .build(ui, || match &mut gui_state.main_window {
                 MainWindow::Gallery => {
                     let blobs = db.pieces().filter_map(|(id, _)| {
-                        //
                         let mut blobs = db.blobs_for_piece(id);
                         blobs
                             .clone()
@@ -186,7 +185,7 @@ impl App {
                         ui,
                         blobs,
                         &gui_handle,
-                        &gui_state.thumbnails,
+                        &gui_state.inner.thumbnails,
                         |blob, ui| {
                             let piece_id = db.pieces_for_blob(blob).next().unwrap();
                             piece::view(piece_id, &db, ui);
@@ -200,7 +199,7 @@ impl App {
 
                     match focused {
                         Some(blob_id) => {
-                            if let Some(image) = gui_state.images.get(blob_id) {
+                            if let Some(image) = gui_state.inner.images.get(blob_id) {
                                 let zoom = (1.0
                                     / (image.width as f32 / content_region[0])
                                         .max(image.height as f32 / content_region[1]))
@@ -236,9 +235,9 @@ impl App {
                                             .clone()
                                             .filter(|blob| db[blob].blob_type == blob_type),
                                         &gui_handle,
-                                        &gui_state.thumbnails,
+                                        &gui_state.inner.thumbnails,
                                         |blob_id, ui| {
-                                            blob::view(blob_id, &db, ui);
+                                            blob::tooltip(blob_id, &db, ui);
                                         },
                                     ) {
                                         *focused = Some(to_focus);
@@ -258,7 +257,7 @@ impl App {
                                             if ui
                                                 .button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2])
                                             {
-                                                db_handle.ask_blobs_for_piece(*id, blob_type);
+                                                gui_handle.ask_blobs_for_piece(*id, blob_type);
                                             };
                                         });
                                 }
@@ -271,8 +270,7 @@ impl App {
                                     ],
                                 ) {
                                     for file in self.incoming_files.try_iter() {
-                                        dbg!(&file);
-                                        db_handle.new_blob_from_file(*id, blob_type, file);
+                                        gui_handle.new_blob_from_file(*id, blob_type, file);
                                     }
                                 }
                             }
@@ -340,7 +338,7 @@ impl App {
                     if !*edit {
                         piece::view_with_tags(*piece_id, &db, ui);
                     } else if let Some(edit) = piece::edit(*piece_id, &db, ui) {
-                        self.handle.update_piece(edit);
+                        gui_handle.update_piece(edit);
                     }
                 }
             });
