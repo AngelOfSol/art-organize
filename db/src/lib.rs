@@ -7,9 +7,9 @@ pub use self::{
     piece::{Piece, PieceId},
     source_type::SourceType,
     tag::Tag,
-    tag_category::TagCategory,
+    tag_category::Category,
 };
-use self::{tag::TagId, tag_category::TagCategoryId};
+use self::{tag::TagId, tag_category::CategoryId};
 use commands::{AttachBlob, EditBlob, EditPiece};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -18,6 +18,7 @@ use std::{
     path::PathBuf,
 };
 use table::Table;
+use traits::{DeleteFrom, EditFrom, IdExist};
 
 mod blob;
 pub mod commands;
@@ -28,17 +29,18 @@ mod source_type;
 mod table;
 mod tag;
 mod tag_category;
+pub mod traits;
 
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 pub struct Db {
     pieces: Table<Piece>,
     blobs: Table<Blob>,
     tags: Table<Tag>,
-    tag_categories: Table<TagCategory>,
+    categories: Table<Category>,
 
     media: BTreeSet<(PieceId, BlobId)>,
     piece_tags: BTreeSet<(PieceId, TagId)>,
-    tag_category: BTreeMap<TagId, TagCategoryId>,
+    tag_category: BTreeMap<TagId, CategoryId>,
 }
 
 impl Db {
@@ -83,7 +85,7 @@ impl Db {
 
     pub fn tags_for_category(
         &self,
-        category: TagCategoryId,
+        category: CategoryId,
     ) -> impl Iterator<Item = TagId> + Clone + '_ {
         self.tag_category
             .iter()
@@ -91,7 +93,7 @@ impl Db {
             .map(|(id, _)| *id)
     }
 
-    pub fn category_for_tag(&self, tag: TagId) -> Option<TagCategoryId> {
+    pub fn category_for_tag(&self, tag: TagId) -> Option<CategoryId> {
         self.tag_category.get(&tag).copied()
     }
 
@@ -104,8 +106,8 @@ impl Db {
     pub fn tags(&self) -> impl Iterator<Item = (TagId, &'_ Tag)> {
         self.tags.iter()
     }
-    pub fn tag_categories(&self) -> impl Iterator<Item = (TagCategoryId, &'_ TagCategory)> {
-        self.tag_categories.iter()
+    pub fn categories(&self) -> impl Iterator<Item = (CategoryId, &'_ Category)> {
+        self.categories.iter()
     }
 
     pub fn storage_for(&self, id: BlobId) -> PathBuf {
@@ -122,120 +124,5 @@ impl Db {
 
     pub fn edit<Data: EditFrom>(&mut self, data: Data) -> bool {
         data.edit_from(self)
-    }
-}
-
-pub trait EditFrom {
-    fn edit_from(self, db: &mut Db) -> bool;
-}
-
-impl EditFrom for EditPiece {
-    fn edit_from(self, db: &mut Db) -> bool {
-        if let Some(piece) = db.pieces.get_mut(self.id) {
-            *piece = self.data;
-            true
-        } else {
-            false
-        }
-    }
-}
-impl EditFrom for EditBlob {
-    fn edit_from(self, db: &mut Db) -> bool {
-        if let Some(blob) = db.blobs.get_mut(self.id) {
-            *blob = self.data;
-            true
-        } else {
-            false
-        }
-    }
-}
-
-pub trait DeleteFrom {
-    fn delete_from(self, db: &mut Db) -> bool;
-}
-
-impl DeleteFrom for PieceId {
-    fn delete_from(self, db: &mut Db) -> bool {
-        if db.exists(self) {
-            db.pieces.remove(self);
-            db.media.retain(|(piece, _)| *piece != self);
-            db.piece_tags.retain(|(piece, _)| *piece != self);
-
-            true
-        } else {
-            false
-        }
-    }
-}
-
-impl DeleteFrom for BlobId {
-    fn delete_from(self, db: &mut Db) -> bool {
-        if db.exists(self) {
-            db.blobs.remove(self);
-            db.media.retain(|(_, blob)| *blob != self);
-            true
-        } else {
-            false
-        }
-    }
-}
-
-pub trait IdExist {
-    fn exists_in(self, db: &Db) -> bool;
-}
-
-impl IdExist for BlobId {
-    fn exists_in(self, db: &Db) -> bool {
-        db.blobs.has(self)
-    }
-}
-impl IdExist for PieceId {
-    fn exists_in(self, db: &Db) -> bool {
-        db.pieces.has(self)
-    }
-}
-impl IdExist for TagId {
-    fn exists_in(self, db: &Db) -> bool {
-        db.tags.has(self)
-    }
-}
-impl IdExist for TagCategoryId {
-    fn exists_in(self, db: &Db) -> bool {
-        db.tag_categories.has(self)
-    }
-}
-
-impl Index<PieceId> for Db {
-    type Output = Piece;
-
-    fn index(&self, index: PieceId) -> &Self::Output {
-        &self.pieces[index]
-    }
-}
-
-impl Index<BlobId> for Db {
-    type Output = Blob;
-
-    fn index(&self, index: BlobId) -> &Self::Output {
-        &self.blobs[index]
-    }
-}
-
-impl Index<TagId> for Db {
-    type Output = Tag;
-
-    fn index(&self, index: TagId) -> &Self::Output {
-        &self.tags[index]
-    }
-}
-
-impl<'a, T: Copy> Index<&'a T> for Db
-where
-    Db: Index<T>,
-{
-    type Output = <Db as Index<T>>::Output;
-
-    fn index(&self, index: &'a T) -> &Self::Output {
-        self.index(*index)
     }
 }

@@ -3,17 +3,17 @@ use serde::{Deserialize, Serialize};
 
 use crate::table::TableId;
 
-pub type TagCategoryId = TableId<TagCategory>;
+pub type CategoryId = TableId<Category>;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
-pub struct TagCategory {
+pub struct Category {
     pub name: String,
     pub description: String,
     pub color: [u8; 4],
     pub added: NaiveDate,
 }
 
-impl TagCategory {
+impl Category {
     pub fn raw_color(&self) -> [f32; 4] {
         [
             self.color[0] as f32 / 255.0,
@@ -24,7 +24,7 @@ impl TagCategory {
     }
 }
 
-impl Default for TagCategory {
+impl Default for Category {
     fn default() -> Self {
         Self {
             name: "New Tag Category".to_string(),
