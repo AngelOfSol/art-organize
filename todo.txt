@@ -63,6 +63,10 @@ categories have:
 
 v0.1 milestone
 - tooltips and help screen
+    - add tooltips to every field
+    - add more info to the help screen
+    - add a menu item for help that brings up the help screen
+- add menu item to clean folder of items that arent the DB or items contained therein
 
 think about removing media type?
 

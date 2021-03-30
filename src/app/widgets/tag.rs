@@ -1,4 +1,4 @@
-use db::{Tag, TagCategory};
+use db::{Category, Tag};
 use imgui::{im_str, Selectable, StyleColor, Ui};
 
 pub enum TagResponse {
@@ -10,7 +10,7 @@ pub enum TagResponse {
     ReplaceSearch,
 }
 
-pub fn view(ui: &Ui, t: &Tag, tg: &TagCategory) -> TagResponse {
+pub fn view(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
     let button_size = [ui.text_line_height_with_spacing(); 2];
     let label = im_str!("{}", t.name);
     let _id = ui.push_id(&label);
@@ -28,7 +28,7 @@ pub fn view(ui: &Ui, t: &Tag, tg: &TagCategory) -> TagResponse {
     }
 }
 
-pub fn edit(ui: &Ui, t: &Tag, tg: &TagCategory) -> TagResponse {
+pub fn edit(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
     let button_size = [ui.text_line_height_with_spacing(); 2];
     let label = im_str!("{}", t.name);
 
@@ -56,7 +56,7 @@ pub fn edit(ui: &Ui, t: &Tag, tg: &TagCategory) -> TagResponse {
     }
 }
 
-pub fn gallery(ui: &Ui, t: &Tag, tg: &TagCategory) -> TagResponse {
+pub fn gallery(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
     let button_size = [ui.text_line_height_with_spacing(); 2];
     let label = im_str!("{}", t.name);
 

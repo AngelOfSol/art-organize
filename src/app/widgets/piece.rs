@@ -1,6 +1,6 @@
 use crate::app::{tag, tag_category};
 use chrono::Local;
-use db::{commands::EditPiece, Db, Piece, PieceId, Tag, TagCategory};
+use db::{commands::EditPiece, Category, Db, Piece, PieceId, Tag};
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, PopupModal, Selectable, Ui};
 use std::fmt::Display;
 use strum::IntoEnumIterator;
@@ -28,11 +28,11 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     ui.separator();
 
     for i in 0..10u32 {
-        let tg = TagCategory {
+        let tg = Category {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
             added: Local::today().naive_local(),
-            ..TagCategory::default()
+            ..Category::default()
         };
         let raw_color = [
             tg.color[0] as f32 / 255.0,
@@ -181,11 +181,11 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
     ui.separator();
 
     for i in 0..10u32 {
-        let tg = TagCategory {
+        let tg = Category {
             name: format!("category_{}", i),
             color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
             added: Local::today().naive_local(),
-            ..TagCategory::default()
+            ..Category::default()
         };
 
         for j in 0..2 {

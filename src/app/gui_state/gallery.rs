@@ -1,5 +1,5 @@
 use chrono::Local;
-use db::{BlobType, Tag, TagCategory};
+use db::{BlobType, Category, Tag};
 
 use super::{piece::PieceView, GuiHandle, GuiView};
 use crate::app::widgets::*;
@@ -46,11 +46,11 @@ impl GuiView for Gallery {
                 added: Local::today().naive_local(),
                 links: Vec::new(),
             };
-            let tg = TagCategory {
+            let tg = Category {
                 name: format!("category_{}", i),
                 color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
                 added: Local::today().naive_local(),
-                ..TagCategory::default()
+                ..Category::default()
             };
 
             tag::gallery(ui, &t, &tg);
