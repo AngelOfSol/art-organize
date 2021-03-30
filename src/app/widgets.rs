@@ -4,12 +4,12 @@ use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
 pub mod blob;
+pub mod category;
 pub mod confirm;
 pub mod date;
 pub mod gallery;
 pub mod piece;
 pub mod tag;
-pub mod tag_category;
 
 pub fn combo_box<T: IntoEnumIterator + Display + Eq>(
     ui: &Ui<'_>,

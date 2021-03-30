@@ -6,7 +6,7 @@ use crate::{
 };
 use db::BlobId;
 use glam::Vec2;
-use imgui::{im_str, Key, MenuItem, MouseButton, Ui, Window};
+use imgui::{im_str, Key, MenuItem, MouseButton, PopupModal, Ui, Window};
 use std::{
     collections::HashMap,
     sync::{mpsc, Arc, RwLock},
@@ -65,6 +65,7 @@ impl App {
 
             layout_data
         };
+        let mut trigger = false;
         {
             let db = self.gui_handle.read().unwrap();
 
@@ -74,13 +75,17 @@ impl App {
             if ui.is_key_pressed_no_repeat(Key::Y) && ui.io().key_ctrl && db.can_redo() {
                 self.gui_handle.redo();
             }
-
             ui.main_menu_bar(|| {
                 ui.menu(im_str!("File"), || {
                     if MenuItem::new(im_str!("New Piece")).build(ui) {
                         self.gui_handle.request_new_piece();
                     }
+                    ui.separator();
+                    if MenuItem::new(im_str!("Clean Blobs")).build(ui) {
+                        trigger = true;
+                    }
                 });
+
                 ui.menu(im_str!("Edit"), || {
                     if MenuItem::new(im_str!("Undo"))
                         .enabled(db.can_undo())
@@ -105,6 +110,7 @@ impl App {
                 });
             });
         }
+
         if gui_state.show_styles {
             ui.show_default_style_editor();
         }
@@ -151,7 +157,36 @@ impl App {
                 layout[&LayoutIds::Main].size.into(),
                 imgui::Condition::Always,
             )
-            .build(ui, || gui_state.render_main(&self.gui_handle, ui));
+            .build(ui, || {
+                gui_state.render_main(&self.gui_handle, ui);
+            });
+
+        if trigger {
+            ui.open_popup(im_str!("Clean Database Directory"));
+        }
+        PopupModal::new(im_str!("Clean Database Directory"))
+            .movable(false)
+            .resizable(false)
+            .collapsible(false)
+            .always_auto_resize(true)
+            .build(ui, || {
+                ui.text(im_str!(
+                    "This will move all deleted blobs to the system recycle bin."
+                ));
+                ui.text(im_str!(
+                    "If you undo past this point, you will need to manually"
+                ));
+                ui.text(im_str!("restore the old files in the database directory."));
+                ui.separator();
+                if ui.button(im_str!("Yes, clean deleted blobs")) {
+                    self.gui_handle.clean_blobs();
+                    ui.close_current_popup();
+                }
+                ui.same_line();
+                if ui.button(im_str!("Cancel")) {
+                    ui.close_current_popup();
+                }
+            });
 
         Window::new(im_str!("Tags"))
             .movable(false)

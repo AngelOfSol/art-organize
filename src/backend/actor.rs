@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsStr,
     ops::Deref,
     path::PathBuf,
     sync::{Arc, RwLock},
@@ -9,6 +10,7 @@ use db::{
     BlobId, BlobType, Db, Piece, PieceId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
+use regex::Regex;
 use tokio::{
     fs,
     sync::{mpsc, oneshot},
@@ -106,6 +108,12 @@ impl DbHandle {
             }))
             .unwrap();
     }
+
+    pub fn clean_blobs(&self) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::CleanBlobs))
+            .unwrap();
+    }
 }
 
 #[derive(Debug)]
@@ -131,6 +139,7 @@ pub enum DbAction {
         blob_type: BlobType,
         path: PathBuf,
     },
+    CleanBlobs,
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
@@ -230,6 +239,35 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     save_data(&data).await;
                 });
             }
+            AppAction::Db(DbAction::CleanBlobs) => {
+                let (paths, root): (Vec<_>, _) = {
+                    let db = data.read().unwrap();
+                    (
+                        db.blobs().map(|(id, _)| db.storage_for(id)).collect(),
+                        db.root.clone(),
+                    )
+                };
+                let mut root = fs::read_dir(root).await.unwrap();
+
+                let regex = Regex::new(r"^\[\d+\] ").unwrap();
+
+                let mut to_remove = FuturesUnordered::new();
+
+                while let Ok(Some(entry)) = root.next_entry().await {
+                    let file_path = entry.path();
+                    if let Some(file_name) = file_path.file_name().and_then(OsStr::to_str) {
+                        if paths.iter().all(|item| item != &file_path) && regex.is_match(file_name)
+                        {
+                            to_remove.push(tokio::task::spawn_blocking(move || {
+                                trash::delete(file_path)
+                            }));
+                        }
+                    }
+                }
+                while let Some(item) = to_remove.next().await {
+                    item.unwrap().unwrap();
+                }
+            }
             AppAction::Db(db_action) => {
                 let mut db = data.write().unwrap();
                 db.undo_checkpoint();
@@ -261,7 +299,9 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     DbAction::DeleteBlob(id) => {
                         assert!(db.delete(id));
                     }
-                    DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } => unreachable!(),
+                    DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } | DbAction::CleanBlobs => {
+                        unreachable!()
+                    }
                 }
             }
         }

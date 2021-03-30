@@ -1,4 +1,4 @@
-use crate::app::{tag, tag_category};
+use crate::app::{category, tag};
 use chrono::Local;
 use db::{commands::EditPiece, Category, Db, Piece, PieceId, Tag};
 use imgui::{im_str, Ui};
@@ -39,7 +39,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
             tg.color[3] as f32 / 255.0,
         ];
 
-        tag_category::view(ui, &im_str!("{}", tg.name), raw_color);
+        category::view(ui, &im_str!("{}", tg.name), raw_color);
         ui.indent();
         for j in 0..2 {
             let t = Tag {
