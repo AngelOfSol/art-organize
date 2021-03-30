@@ -1,12 +1,12 @@
 use db::{commands::EditBlob, Blob, BlobId, Db};
-use imgui::{im_str, ImStr, PopupModal, Ui};
+use imgui::{im_str, ImStr, Ui};
 
 use crate::{
     consts::{IMAGE_BUFFER, THUMBNAIL_SIZE},
     raw_image::TextureImage,
 };
 
-use super::{combo_box, date};
+use super::{combo_box, confirm::confirm_delete_popup, date};
 
 pub fn tooltip(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
     let blob = &db[blob_id];
@@ -73,27 +73,11 @@ pub fn edit(blob_id: BlobId, db: &Db, ui: &Ui<'_>) -> EditBlobResponse {
         ui.open_popup(im_str!("Confirm Delete"));
     }
 
-    let mut result = EditBlobResponse::None;
-    PopupModal::new(im_str!("Confirm Delete"))
-        .movable(false)
-        .resizable(false)
-        .collapsible(false)
-        .always_auto_resize(true)
-        .build(ui, || {
-            ui.text(im_str!("Are you sure you want to delete this?"));
-
-            if ui.button(im_str!("Yes, delete.")) {
-                result = EditBlobResponse::Deleted(blob_id);
-                ui.close_current_popup();
-            }
-            ui.same_line();
-
-            if ui.button(im_str!("Cancel")) {
-                ui.close_current_popup();
-            }
-        });
-
-    result
+    if confirm_delete_popup(ui) {
+        EditBlobResponse::Deleted(blob_id)
+    } else {
+        EditBlobResponse::None
+    }
 }
 
 pub enum ThumbnailResponse {

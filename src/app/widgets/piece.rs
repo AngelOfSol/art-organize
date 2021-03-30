@@ -1,11 +1,9 @@
 use crate::app::{tag, tag_category};
 use chrono::Local;
 use db::{commands::EditPiece, Category, Db, Piece, PieceId, Tag};
-use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, PopupModal, Selectable, Ui};
-use std::fmt::Display;
-use strum::IntoEnumIterator;
+use imgui::{im_str, Ui};
 
-use super::{combo_box, date};
+use super::{combo_box, confirm::confirm_delete_popup, date};
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -204,24 +202,9 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         .resize_buffer(true)
         .build();
 
-    let mut response = EditPieceResponse::None;
-    PopupModal::new(im_str!("Confirm Delete"))
-        .movable(false)
-        .resizable(false)
-        .collapsible(false)
-        .always_auto_resize(true)
-        .build(ui, || {
-            ui.text(im_str!("Are you sure you want to delete this?"));
-
-            if ui.button(im_str!("Yes, delete.")) {
-                response = EditPieceResponse::Delete;
-                ui.close_current_popup();
-            }
-            ui.same_line();
-
-            if ui.button(im_str!("Cancel")) {
-                ui.close_current_popup();
-            }
-        });
-    response
+    if confirm_delete_popup(ui) {
+        EditPieceResponse::Delete
+    } else {
+        EditPieceResponse::None
+    }
 }

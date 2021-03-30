@@ -1,5 +1,3 @@
-use chrono::Local;
-use db::{BlobType, Tag, Category};
 use imgui::{im_str, Ui};
 
 use super::{GuiHandle, GuiView};

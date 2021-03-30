@@ -2,7 +2,7 @@ use super::{blob::BlobView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
-use imgui::{im_str, ChildWindow, CollapsingHeader, PopupModal};
+use imgui::{im_str, ChildWindow, CollapsingHeader};
 use piece::EditPieceResponse;
 use strum::IntoEnumIterator;
 

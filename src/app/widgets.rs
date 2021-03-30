@@ -4,6 +4,7 @@ use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, Selectable, Ui};
 use strum::IntoEnumIterator;
 
 pub mod blob;
+pub mod confirm;
 pub mod date;
 pub mod gallery;
 pub mod piece;

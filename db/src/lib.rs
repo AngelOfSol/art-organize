@@ -10,11 +10,10 @@ pub use self::{
     tag_category::Category,
 };
 use self::{tag::TagId, tag_category::CategoryId};
-use commands::{AttachBlob, EditBlob, EditPiece};
+use commands::AttachBlob;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    ops::Index,
     path::PathBuf,
 };
 use table::Table;
