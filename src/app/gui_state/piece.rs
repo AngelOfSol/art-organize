@@ -2,7 +2,8 @@ use super::{blob::BlobView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
-use imgui::{im_str, ChildWindow, CollapsingHeader};
+use imgui::{im_str, ChildWindow, CollapsingHeader, PopupModal};
+use piece::EditPieceResponse;
 use strum::IntoEnumIterator;
 
 #[derive(Debug)]
@@ -93,8 +94,17 @@ impl GuiView for PieceView {
         }
         if !self.edit {
             piece::view_with_tags(self.id, &db, ui);
-        } else if let Some(edit) = piece::edit(self.id, &db, ui) {
-            gui_handle.update_piece(edit);
+        } else {
+            match piece::edit(self.id, &db, ui) {
+                EditPieceResponse::None => {}
+                EditPieceResponse::Edit(edit) => {
+                    gui_handle.update_piece(edit);
+                }
+                EditPieceResponse::Delete => {
+                    gui_handle.delete_piece(self.id);
+                    gui_handle.go_back();
+                }
+            }
         }
     }
 }

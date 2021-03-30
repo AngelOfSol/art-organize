@@ -5,7 +5,6 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 use db::BlobId;
-use futures_util::FutureExt;
 use glam::Vec2;
 use imgui::{im_str, Key, MenuItem, MouseButton, Ui, Window};
 use std::{
@@ -131,7 +130,7 @@ impl App {
                 let mut buf = gui_state.search.text.clone().into();
                 if ui
                     .input_text(im_str!("##Search Input"), &mut buf)
-                    .resize_buffer(true)
+                    .callback_always(true)
                     .hint(im_str!("Search"))
                     .build()
                 {

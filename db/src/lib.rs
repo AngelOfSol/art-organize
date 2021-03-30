@@ -1,3 +1,5 @@
+#![feature(btree_retain)]
+
 pub use self::{
     blob::{Blob, BlobId, BlobType},
     contained_piece::ContainedPiece,
@@ -8,7 +10,7 @@ pub use self::{
     tag_category::TagCategory,
 };
 use self::{tag::TagId, tag_category::TagCategoryId};
-use commands::{AttachBlob, EditPiece};
+use commands::{AttachBlob, EditBlob, EditPiece};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -50,14 +52,6 @@ impl Db {
 
     pub fn create_piece(&mut self, data: Piece) -> PieceId {
         self.pieces.insert(data)
-    }
-    pub fn edit_piece(&mut self, EditPiece { id, data }: EditPiece) -> bool {
-        if let Some(piece) = self.pieces.get_mut(id) {
-            *piece = data;
-            true
-        } else {
-            false
-        }
     }
 
     pub fn blobs_for_piece(&self, piece: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
@@ -120,6 +114,69 @@ impl Db {
 
     pub fn exists<Id: IdExist>(&self, id: Id) -> bool {
         id.exists_in(self)
+    }
+
+    pub fn delete<Id: DeleteFrom>(&mut self, id: Id) -> bool {
+        id.delete_from(self)
+    }
+
+    pub fn edit<Data: EditFrom>(&mut self, data: Data) -> bool {
+        data.edit_from(self)
+    }
+}
+
+pub trait EditFrom {
+    fn edit_from(self, db: &mut Db) -> bool;
+}
+
+impl EditFrom for EditPiece {
+    fn edit_from(self, db: &mut Db) -> bool {
+        if let Some(piece) = db.pieces.get_mut(self.id) {
+            *piece = self.data;
+            true
+        } else {
+            false
+        }
+    }
+}
+impl EditFrom for EditBlob {
+    fn edit_from(self, db: &mut Db) -> bool {
+        if let Some(blob) = db.blobs.get_mut(self.id) {
+            *blob = self.data;
+            true
+        } else {
+            false
+        }
+    }
+}
+
+pub trait DeleteFrom {
+    fn delete_from(self, db: &mut Db) -> bool;
+}
+
+impl DeleteFrom for PieceId {
+    fn delete_from(self, db: &mut Db) -> bool {
+        if db.exists(self) {
+            db.pieces.remove(self);
+            db.media.retain(|(piece, _)| *piece != self);
+            db.piece_tags.retain(|(piece, _)| *piece != self);
+
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl DeleteFrom for BlobId {
+    fn delete_from(self, db: &mut Db) -> bool {
+        if db.exists(self) {
+            db.blobs.remove(self);
+            db.media.retain(|(_, blob)| *blob != self);
+            true
+        } else {
+            false
+        }
     }
 }
 

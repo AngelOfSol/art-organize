@@ -5,8 +5,8 @@ use std::{
 };
 
 use db::{
-    commands::{AttachBlob, EditPiece},
-    BlobType, Db, Piece, PieceId,
+    commands::{AttachBlob, EditBlob, EditPiece},
+    BlobId, BlobType, Db, Piece, PieceId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use tokio::{
@@ -61,11 +61,7 @@ impl DbHandle {
     pub fn redo(&self) {
         self.outgoing.send(AppAction::Redo).unwrap();
     }
-    pub fn update_piece(&self, data: EditPiece) {
-        self.outgoing
-            .send(AppAction::Db(DbAction::EditPiece(data)))
-            .unwrap();
-    }
+
     pub fn new_piece(&self) -> oneshot::Receiver<PieceId> {
         let (tx, rx) = oneshot::channel();
         self.outgoing
@@ -73,6 +69,29 @@ impl DbHandle {
             .unwrap();
         rx
     }
+
+    pub fn update_piece(&self, data: EditPiece) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::EditPiece(data)))
+            .unwrap();
+    }
+    pub fn update_blob(&self, data: EditBlob) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::EditBlob(data)))
+            .unwrap();
+    }
+
+    pub fn delete_piece(&self, id: PieceId) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::DeletePiece(id)))
+            .unwrap();
+    }
+    pub fn delete_blob(&self, id: BlobId) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::DeleteBlob(id)))
+            .unwrap();
+    }
+
     pub fn ask_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
         self.outgoing
             .send(AppAction::Db(DbAction::AskBlobs { to, blob_type }))
@@ -100,6 +119,9 @@ pub enum AppAction {
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
     EditPiece(EditPiece),
+    EditBlob(EditBlob),
+    DeletePiece(PieceId),
+    DeleteBlob(BlobId),
     AskBlobs {
         to: PieceId,
         blob_type: BlobType,
@@ -134,7 +156,13 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 db.redo();
             }
             AppAction::Db(DbAction::AskBlobs { to, blob_type }) => {
+                let db = data.read().unwrap();
+                if !db.exists(to) {
+                    continue;
+                }
+
                 let data = data.clone();
+
                 tokio::spawn(async move {
                     let files = if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await
                     {
@@ -180,6 +208,11 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 blob_type,
                 path,
             }) => {
+                let db = data.read().unwrap();
+                if !db.exists(to) {
+                    continue;
+                }
+
                 let data = data.clone();
                 tokio::spawn(async move {
                     let blob = blob::from_path(path.clone(), blob_type).await.unwrap();
@@ -203,11 +236,30 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
 
                 match db_action {
                     DbAction::EditPiece(edit) => {
-                        db.edit_piece(edit);
+                        // TODO log falses here
+                        db.edit(edit);
+                    }
+                    DbAction::EditBlob(edit) => {
+                        let from = db.storage_for(edit.id);
+
+                        let id = edit.id;
+                        db.edit(edit);
+
+                        let to = db.storage_for(id);
+                        if from != to {
+                            std::fs::copy(&from, to).unwrap();
+                            std::fs::remove_file(from).unwrap();
+                        }
                     }
                     DbAction::NewPiece(sender) => {
                         let id = db.create_piece(Piece::default());
                         sender.send(id).unwrap();
+                    }
+                    DbAction::DeletePiece(id) => {
+                        assert!(db.delete(id));
+                    }
+                    DbAction::DeleteBlob(id) => {
+                        assert!(db.delete(id));
                     }
                     DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } => unreachable!(),
                 }

@@ -1,5 +1,6 @@
 use super::GuiView;
 use crate::app::widgets::*;
+use blob::EditBlobResponse;
 use db::BlobId;
 use imgui::im_str;
 
@@ -58,9 +59,17 @@ impl GuiView for BlobView {
         }
         if !self.edit {
             blob::view(self.id, &db, ui);
-        } else if let Some(_edit) = blob::edit(self.id, &db, ui) {
-            todo!();
-            // gui_handle.update_piece(edit);
+        } else {
+            match blob::edit(self.id, &db, ui) {
+                EditBlobResponse::None => {}
+                EditBlobResponse::Changed(data) => {
+                    gui_handle.update_blob(data);
+                }
+                EditBlobResponse::Deleted(id) => {
+                    gui_handle.delete_blob(id);
+                    gui_handle.go_back();
+                }
+            };
         }
     }
 }

@@ -9,6 +9,8 @@ pub fn modify_style(style: &mut Style) {
     style.window_rounding = 0.0;
     style.scrollbar_rounding = 0.0;
 
+    let save = style[ModalWindowDimBg];
+
     for color in style.colors.iter_mut() {
         let alpha = color[3];
         color[3] = 1.0;
@@ -19,6 +21,7 @@ pub fn modify_style(style: &mut Style) {
     }
     // unactive windows shoudl still havethe active style
     style[TitleBg] = style[TitleBgActive];
+    style[ModalWindowDimBg] = save;
 
     // style[Text] = [0.75, 0.75, 0.75, 1.00];
     // style[TextDisabled] = [0.35, 0.35, 0.35, 1.00];
