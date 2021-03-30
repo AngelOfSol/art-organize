@@ -9,7 +9,7 @@ use std::{
 };
 
 use db::BlobId;
-use gallery::Gallery;
+use home::Home;
 use tokio::sync::mpsc;
 
 use crate::{
@@ -21,6 +21,8 @@ use self::piece::PieceView;
 
 pub mod blob;
 pub mod gallery;
+pub mod help;
+pub mod home;
 pub mod piece;
 
 pub struct GuiState {
@@ -62,7 +64,7 @@ impl GuiState {
 impl Default for GuiState {
     fn default() -> Self {
         Self {
-            view_stack: vec![Box::new(Gallery)],
+            view_stack: vec![Box::new(Home)],
             inner: InnerGuiState::default(),
         }
     }

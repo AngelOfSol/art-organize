@@ -41,7 +41,6 @@ categories have:
 - implement double-right click back and forth navigation 
 - implement saving data to disk
 - move to message passing system
-    ? still debating how to handle gui state, given some of it may make more sense to do later
 - remove image tooltips, replace them with piece name (info?) tool tips
 - reorg gui code
 - implement adding blobs via an Add button in each category
@@ -58,12 +57,12 @@ categories have:
     - they return a new mode if any to switch to after the render ends
 - create blob editing
 - create gui_stack, to move back and forth between locations [gallery, piece view, tag list, etc], where double right click pops off the stack
-
-v0.1 milestone
-- tooltips and help screen
 - blob:
     - delete
     - edit
+
+v0.1 milestone
+- tooltips and help screen
 
 think about removing media type?
 
@@ -74,6 +73,7 @@ v0.2 and beyond
 - implement categories
 - implement searching
 - implement hyperlinks
+- add context menus to edit blobs in the piece screen
 - add a statistics screen
 - add a settings screen
 - allow user to add contextual shell commands via the settings screen
