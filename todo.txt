@@ -61,13 +61,19 @@ categories have:
     - delete
     - edit
 - add menu item to clean folder of items that arent the DB or items contained therein
-
-v0.1 milestone
+- make clean blobs remove unassociated blobs
 - tooltips and help screen
-    - add tooltips to every field
     - add more info to the help screen
     - add a menu item for help that brings up the help screen
-- make clean blobs remove unassociated blobs
+    X add tooltips to every field [will get user feedback to see if this is necessary]
+
+v0.1 milestone
+- enable auto updater
+- upload to github
+- build binaries
+    - build them without any tagging showing, and temporarily remove the search bar
+- release on github
+- release on twitter 
 
 
 v0.2 and beyond

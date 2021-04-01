@@ -107,9 +107,6 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
             },
         });
     }
-    if ui.is_item_hovered() {
-        ui.tooltip_text("Format: Month/Day/Year\nHit enter to submit.");
-    }
 
     let mut buf = piece
         .base_price
