@@ -240,6 +240,18 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 });
             }
             AppAction::Db(DbAction::CleanBlobs) => {
+                {
+                    let mut db = data.write().unwrap();
+                    let dangling_blobs = db
+                        .blobs()
+                        .map(|(id, _)| id)
+                        .filter(|blob_id| db.pieces_for_blob(*blob_id).count() == 0)
+                        .collect::<Vec<_>>();
+                    for blob_id in dangling_blobs {
+                        db.delete(blob_id);
+                    }
+                }
+
                 let (paths, root): (Vec<_>, _) = {
                     let db = data.read().unwrap();
                     (

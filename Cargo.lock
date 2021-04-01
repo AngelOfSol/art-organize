@@ -1226,7 +1226,7 @@ dependencies = [
 [[package]]
 name = "imgui"
 version = "0.7.0"
-source = "git+https://github.com/AngelOfSol/imgui-rs.git#97d5dc8502d8213b909431d9926df39bec271e17"
+source = "git+https://github.com/imgui-rs/imgui-rs.git#97d5dc8502d8213b909431d9926df39bec271e17"
 dependencies = [
  "bitflags",
  "imgui-sys",
@@ -1236,7 +1236,7 @@ dependencies = [
 [[package]]
 name = "imgui-sys"
 version = "0.7.0"
-source = "git+https://github.com/AngelOfSol/imgui-rs.git#97d5dc8502d8213b909431d9926df39bec271e17"
+source = "git+https://github.com/imgui-rs/imgui-rs.git#97d5dc8502d8213b909431d9926df39bec271e17"
 dependencies = [
  "cc",
  "chlorine",

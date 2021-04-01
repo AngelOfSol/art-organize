@@ -67,6 +67,7 @@ v0.1 milestone
     - add tooltips to every field
     - add more info to the help screen
     - add a menu item for help that brings up the help screen
+- make clean blobs remove unassociated blobs
 
 
 v0.2 and beyond

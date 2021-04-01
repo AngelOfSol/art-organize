@@ -6,6 +6,7 @@ use crate::{
 };
 use db::BlobId;
 use glam::Vec2;
+use gui_state::help::Help;
 use imgui::{im_str, Key, MenuItem, MouseButton, PopupModal, Ui, Window};
 use std::{
     collections::HashMap,
@@ -102,6 +103,11 @@ impl App {
                         self.gui_handle.redo();
                     }
                 });
+                ui.menu(im_str!("Help"), || {
+                    if MenuItem::new(im_str!("Help")).build(ui) {
+                        self.gui_handle.goto(Help)
+                    }
+                });
                 ui.menu(im_str!("Debug"), || {
                     MenuItem::new(im_str!("Styles")).build_with_ref(ui, &mut gui_state.show_styles);
 
@@ -132,17 +138,19 @@ impl App {
                 imgui::Condition::Always,
             )
             .build(ui, || {
-                let width = ui.push_item_width(-1.0);
+                let _width = ui.push_item_width(-1.0);
                 let mut buf = gui_state.search.text.clone().into();
                 if ui
                     .input_text(im_str!("##Search Input"), &mut buf)
-                    .callback_always(true)
+                    .resize_buffer(true)
                     .hint(im_str!("Search"))
                     .build()
                 {
                     gui_state.search.text = buf.to_string();
                 };
-                drop(width);
+                if ui.is_item_hovered() {
+                    ui.tooltip_text(im_str!("Currently unimplemented."));
+                }
             });
         Window::new(im_str!("Main"))
             .movable(false)
