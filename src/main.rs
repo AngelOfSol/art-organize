@@ -25,7 +25,6 @@ mod backend;
 mod cli;
 mod config;
 mod consts;
-mod first_time;
 mod gui;
 mod layout;
 mod loaders;

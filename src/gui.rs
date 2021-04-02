@@ -1,7 +1,7 @@
+use crate::{app::App, raw_image::RawImage, style::modify_style};
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
-use mpsc::TryRecvError;
 use std::{sync::mpsc, time::Instant};
 use wgpu::Extent3d;
 use winit::{
@@ -10,8 +10,6 @@ use winit::{
     event_loop::{ControlFlow, EventLoop},
     window::Window,
 };
-
-use crate::{app::App, backend::DbBackend, create_app, raw_image::RawImage, style::modify_style};
 
 pub struct GuiContext {
     _instance: wgpu::Instance,
@@ -30,7 +28,7 @@ pub struct GuiContext {
 pub fn run_event_loop(
     event_loop: EventLoop<()>,
     mut context: GuiContext,
-    mut outgoing_files: mpsc::Sender<std::path::PathBuf>,
+    outgoing_files: mpsc::Sender<std::path::PathBuf>,
     mut app: App,
 ) {
     event_loop.run(move |event, _, control_flow| {
