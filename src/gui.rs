@@ -1,7 +1,8 @@
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
-use std::{path::PathBuf, sync::mpsc, time::Instant};
+use mpsc::TryRecvError;
+use std::{sync::mpsc, time::Instant};
 use wgpu::Extent3d;
 use winit::{
     dpi::LogicalSize,
@@ -10,10 +11,9 @@ use winit::{
     window::Window,
 };
 
-use crate::{app::App, raw_image::RawImage, style::modify_style};
+use crate::{app::App, backend::DbBackend, create_app, raw_image::RawImage, style::modify_style};
 
 pub struct GuiContext {
-    outgoing_files: mpsc::Sender<PathBuf>,
     _instance: wgpu::Instance,
     queue: wgpu::Queue,
     surface: wgpu::Surface,
@@ -27,7 +27,12 @@ pub struct GuiContext {
     last_cursor: Option<Option<MouseCursor>>,
 }
 
-pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut app: App) {
+pub fn run_event_loop(
+    event_loop: EventLoop<()>,
+    mut context: GuiContext,
+    mut outgoing_files: mpsc::Sender<std::path::PathBuf>,
+    mut app: App,
+) {
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
@@ -74,9 +79,7 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
             Event::WindowEvent {
                 event: WindowEvent::DroppedFile(path),
                 ..
-            } => {
-                context.outgoing_files.send(path.clone()).unwrap();
-            }
+            } => outgoing_files.send(path.clone()).unwrap(),
             Event::MainEventsCleared => {
                 context.window.request_redraw();
             }
@@ -93,10 +96,7 @@ pub fn run_event_loop(event_loop: EventLoop<()>, mut context: GuiContext, mut ap
 }
 
 impl GuiContext {
-    pub async fn create(
-        event_loop: &EventLoop<()>,
-        outgoing_files: mpsc::Sender<PathBuf>,
-    ) -> anyhow::Result<Self> {
+    pub async fn create(event_loop: &EventLoop<()>) -> anyhow::Result<Self> {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
 
         let (window, size, surface) = {
@@ -189,7 +189,6 @@ impl GuiContext {
             queue,
             last_frame: Instant::now(),
             last_cursor: None,
-            outgoing_files,
         })
     }
 

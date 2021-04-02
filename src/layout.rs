@@ -1,4 +1,4 @@
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, hash::Hash, marker::PhantomData};
 
 use glam::{BVec2, Vec2};
 
@@ -16,8 +16,8 @@ pub enum Dimension {
     Flex(f32),
 }
 
-pub type Row = Group<Item, RowType>;
-pub type Column = Group<Item, ColumnType>;
+pub type Row<ItemId> = Group<Item<ItemId>, RowType>;
+pub type Column<ItemId> = Group<Item<ItemId>, ColumnType>;
 
 #[derive(Default, Debug)]
 pub struct RowType;
@@ -39,27 +39,25 @@ impl<Id, T> Default for Group<Id, T> {
     }
 }
 
-type ItemId = LayoutIds;
-
 #[derive(Debug)]
-pub enum Item {
+pub enum Item<ItemId = LayoutIds> {
     Id(ItemId),
-    Row(Row),
-    Column(Column),
+    Row(Row<ItemId>),
+    Column(Column<ItemId>),
 }
 
-impl From<ItemId> for Item {
+impl<ItemId> From<ItemId> for Item<ItemId> {
     fn from(value: ItemId) -> Self {
         Self::Id(value)
     }
 }
-impl From<Row> for Item {
-    fn from(value: Row) -> Self {
+impl<ItemId> From<Row<ItemId>> for Item<ItemId> {
+    fn from(value: Row<ItemId>) -> Self {
         Self::Row(value)
     }
 }
-impl From<Column> for Item {
-    fn from(value: Column) -> Self {
+impl<ItemId> From<Column<ItemId>> for Item<ItemId> {
+    fn from(value: Column<ItemId>) -> Self {
         Self::Column(value)
     }
 }
@@ -70,7 +68,7 @@ pub struct LayoutRectangle {
     pub size: Vec2,
 }
 
-impl Row {
+impl<ItemId: Hash + Eq + Copy> Row<ItemId> {
     pub fn layout(
         &self,
         allocated: LayoutRectangle,
@@ -106,7 +104,7 @@ impl Row {
     }
 }
 
-impl Column {
+impl<ItemId: Hash + Eq + Copy> Column<ItemId> {
     pub fn layout(
         &self,
         allocated: LayoutRectangle,

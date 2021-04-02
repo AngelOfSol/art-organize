@@ -67,12 +67,14 @@ categories have:
     - add a menu item for help that brings up the help screen
     X add tooltips to every field [will get user feedback to see if this is necessary]
 - upload to github
-
-v0.1 milestone
 - enable auto updater
 - build binaries
     - build them without any tagging showing, and temporarily remove the search bar
 - release on github
+
+v0.1 milestone
+- add new database/load database screen
+    - auto set default database to most recently loaded
 - release on twitter 
 
 

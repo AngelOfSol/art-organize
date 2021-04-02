@@ -24,6 +24,7 @@ pub mod gallery;
 pub mod help;
 pub mod home;
 pub mod piece;
+pub mod update;
 
 pub struct GuiState {
     view_stack: Vec<Box<dyn GuiView>>,
@@ -114,20 +115,33 @@ pub enum GuiAction {
     Push(Box<dyn GuiView>),
 }
 
-pub struct GuiHandle {
+#[derive(Clone)]
+pub struct GuiActionHandle {
     outgoing: mpsc::UnboundedSender<GuiAction>,
-    pub incoming_files: std_mpsc::Receiver<PathBuf>,
     db: DbHandle,
 }
 
-impl Deref for GuiHandle {
+impl Deref for GuiActionHandle {
     type Target = DbHandle;
+
     fn deref(&self) -> &Self::Target {
         &self.db
     }
 }
 
-impl GuiHandle {
+pub struct GuiHandle {
+    outgoing: GuiActionHandle,
+    pub incoming_files: std_mpsc::Receiver<PathBuf>,
+}
+
+impl Deref for GuiHandle {
+    type Target = GuiActionHandle;
+    fn deref(&self) -> &Self::Target {
+        &self.outgoing
+    }
+}
+
+impl GuiActionHandle {
     pub fn request_new_piece(&self) {
         self.outgoing.send(GuiAction::NewPiece).unwrap();
     }
@@ -170,8 +184,7 @@ pub fn start_gui_task(
     tokio::spawn(gui_actor(rx, db.clone(), gui_state, outgoing_images));
 
     GuiHandle {
-        outgoing: tx,
-        db,
+        outgoing: GuiActionHandle { outgoing: tx, db },
         incoming_files,
     }
 }

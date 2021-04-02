@@ -6,13 +6,15 @@ use std::path::PathBuf;
 #[clap(version = "1.0", author = "Angel of Sol")]
 pub struct Opts {
     #[clap(subcommand)]
-    pub subcmd: SubCommand,
+    pub subcmd: Option<SubCommand>,
 }
 
 #[derive(Clap, Debug, Serialize, Deserialize)]
 pub enum SubCommand {
     /// Creates a new database in the current working directory
-    Init { path: Option<PathBuf> },
+    Init {
+        path: Option<PathBuf>,
+    },
 
     /// Updates file explorer context menus
     Contextual {
@@ -23,6 +25,7 @@ pub enum SubCommand {
     Gui,
     /// Resets the configuration to the default values
     ResetConfig,
+    Update,
 }
 
 #[derive(Clap, Debug, Serialize, Deserialize)]

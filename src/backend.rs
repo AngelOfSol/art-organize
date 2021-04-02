@@ -13,6 +13,7 @@ use crate::undo::UndoStack;
 
 #[derive(Clone, Debug)]
 pub struct DbBackend {
+    // -> Option<PathBuf>
     pub root: PathBuf,
     pub inner: UndoStack<Db>,
 }
@@ -59,8 +60,6 @@ impl DbBackend {
             root,
             inner: UndoStack::new(db),
         };
-
-        ret.save().await?;
 
         Ok(ret)
     }

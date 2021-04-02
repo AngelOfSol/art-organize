@@ -32,6 +32,7 @@ ipc = {path = "ipc"}
 lazy_static = "1.4.0"
 regex = "1.4.5"
 rfd = "0.2.1"
+self_update = {version = "0.26.0", features = ["compression-zip-deflate", "archive-zip"]}
 serde = {version = "1.0.124", features = ["derive"]}
 strum = "0.20.0"
 tokio = {version = "1.3.0", features = ["rt", "rt-multi-thread", "time", "macros", "sync", "fs"]}

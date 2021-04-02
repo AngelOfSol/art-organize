@@ -1,5 +1,8 @@
 use self::gui_state::{GuiHandle, GuiState};
-use crate::layout::{Column, Dimension, LayoutIds, LayoutRectangle, Row};
+use crate::{
+    app::gui_state::update::CheckForUpdates,
+    layout::{Column, Dimension, LayoutIds, LayoutRectangle, Row},
+};
 use crate::{
     gui::GuiContext,
     raw_image::{RawImage, TextureImage},
@@ -23,6 +26,10 @@ pub struct App {
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
     pub incoming_images: mpsc::Receiver<(BlobId, RawImage, bool)>,
+}
+
+enum Popup {
+    CleanBlobs,
 }
 
 impl App {
@@ -66,7 +73,7 @@ impl App {
 
             layout_data
         };
-        let mut trigger = false;
+        let mut trigger = None;
         {
             let db = self.gui_handle.read().unwrap();
 
@@ -83,7 +90,7 @@ impl App {
                     }
                     ui.separator();
                     if MenuItem::new(im_str!("Clean Blobs")).build(ui) {
-                        trigger = true;
+                        trigger = Some(Popup::CleanBlobs);
                     }
                 });
 
@@ -106,6 +113,15 @@ impl App {
                 ui.menu(im_str!("Help"), || {
                     if MenuItem::new(im_str!("Help")).build(ui) {
                         self.gui_handle.goto(Help)
+                    }
+                    ui.separator();
+                    if MenuItem::new(im_str!("Check for Updates")).build(ui) {
+                        let gui_handle = self.gui_handle.clone();
+                        tokio::task::spawn_blocking(move || {
+                            if let Ok(version) = crate::updater::check_for_new_releases() {
+                                gui_handle.goto(CheckForUpdates { version });
+                            }
+                        });
                     }
                 });
                 ui.menu(im_str!("Debug"), || {
@@ -169,9 +185,12 @@ impl App {
                 gui_state.render_main(&self.gui_handle, ui);
             });
 
-        if trigger {
-            ui.open_popup(im_str!("Clean Database Directory"));
+        if let Some(popup) = trigger {
+            match popup {
+                Popup::CleanBlobs => ui.open_popup(im_str!("Clean Database Directory")),
+            }
         }
+
         PopupModal::new(im_str!("Clean Database Directory"))
             .movable(false)
             .resizable(false)

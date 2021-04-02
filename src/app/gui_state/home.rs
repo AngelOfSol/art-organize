@@ -9,6 +9,7 @@ impl GuiView for Home {
     fn update(&self, _: &super::GuiHandle) {}
     fn draw_main(&mut self, gui_handle: &GuiHandle, _: &super::InnerGuiState, ui: &imgui::Ui<'_>) {
         ui.text(im_str!("Home Screen"));
+        ui.separator();
         if ui.button(im_str!("Gallery")) {
             gui_handle.goto(Gallery);
         }
