@@ -17,7 +17,7 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 
-use self::piece::PieceView;
+use self::{gallery::Gallery, piece::PieceView};
 
 pub mod blob;
 pub mod gallery;
@@ -112,7 +112,10 @@ pub enum GuiAction {
     },
     NewPiece,
     Back,
+    Reset,
     Push(Box<dyn GuiView>),
+    NewDB,
+    LoadDB,
 }
 
 #[derive(Clone)]
@@ -170,6 +173,13 @@ impl GuiActionHandle {
         self.outgoing
             .send(GuiAction::Push(Box::new(state)))
             .unwrap();
+    }
+
+    pub fn new_db(&self) {
+        self.outgoing.send(GuiAction::NewDB).unwrap();
+    }
+    pub fn load_db(&self) {
+        self.outgoing.send(GuiAction::LoadDB).unwrap();
     }
 }
 
@@ -266,6 +276,22 @@ async fn gui_actor(
             GuiAction::Push(state) => {
                 let mut gui_state = gui_state.write().unwrap();
                 gui_state.view_stack.push(state);
+            }
+            GuiAction::Reset => {
+                let mut gui_state = gui_state.write().unwrap();
+                *gui_state = GuiState::default();
+            }
+            GuiAction::NewDB => {
+                db.new_db();
+                let mut gui_state = gui_state.write().unwrap();
+                *gui_state = GuiState::default();
+                gui_state.view_stack.push(Box::new(Gallery));
+            }
+            GuiAction::LoadDB => {
+                db.load_db();
+                let mut gui_state = gui_state.write().unwrap();
+                *gui_state = GuiState::default();
+                gui_state.view_stack.push(Box::new(Gallery));
             }
         }
     }

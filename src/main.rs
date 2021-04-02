@@ -68,7 +68,7 @@ async fn async_main() -> anyhow::Result<()> {
 
                 config.save().unwrap();
 
-                let backend = DbBackend::init_at_path(root).await?;
+                let backend = DbBackend::init_at_directory(root).await?;
                 backend.save().await?;
             }
             SubCommand::ResetConfig => {
@@ -136,10 +136,10 @@ async fn create_app(root: PathBuf) -> anyhow::Result<(mpsc::Sender<std::path::Pa
     let (outgoing_images, rx) = mpsc::channel();
     let (outgoing_files, incoming_files) = mpsc::channel();
     let db = Arc::new(RwLock::new({
-        match DbBackend::from_path(root.clone()).await {
+        match DbBackend::from_directory(root.clone()).await {
             Ok(value) => value,
             Err(_) => {
-                let backend = DbBackend::init_at_path(root.clone()).await?;
+                let backend = DbBackend::init_at_directory(root.clone()).await?;
                 backend.save().await?;
                 backend
             }

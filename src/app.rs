@@ -85,12 +85,20 @@ impl App {
             }
             ui.main_menu_bar(|| {
                 ui.menu(im_str!("File"), || {
-                    if MenuItem::new(im_str!("New Piece")).build(ui) {
-                        self.gui_handle.request_new_piece();
+                    if MenuItem::new(im_str!("New Database")).build(ui) {
+                        self.gui_handle.new_db();
+                    }
+                    if MenuItem::new(im_str!("Load Database")).build(ui) {
+                        self.gui_handle.load_db();
                     }
                     ui.separator();
                     if MenuItem::new(im_str!("Clean Blobs")).build(ui) {
                         trigger = Some(Popup::CleanBlobs);
+                    }
+                });
+                ui.menu(im_str!("Data"), || {
+                    if MenuItem::new(im_str!("New Piece")).build(ui) {
+                        self.gui_handle.request_new_piece();
                     }
                 });
 

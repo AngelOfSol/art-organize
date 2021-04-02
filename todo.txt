@@ -71,14 +71,17 @@ categories have:
 - build binaries
     - build them without any tagging showing, and temporarily remove the search bar
 - release on github
+- startup message indicating the user needs to set a default database directory
+- add new database/load database file options
+    - auto set default database to most recently loaded
 
 v0.1 milestone
-- add new database/load database screen
-    - auto set default database to most recently loaded
+- bug check on image loading
 - release on twitter 
 
 
 v0.2 and beyond
+- save image to file
 - implement adding tags
 - implement editing tags
 - implement viewing tag list

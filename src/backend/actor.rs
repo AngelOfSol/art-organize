@@ -11,6 +11,7 @@ use db::{
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use regex::Regex;
+use rfd::AsyncFileDialog;
 use tokio::{
     fs,
     sync::{mpsc, oneshot},
@@ -40,6 +41,8 @@ mod blob {
     }
 }
 
+use crate::config::Config;
+
 use super::{data_file, DbBackend};
 
 #[derive(Debug, Clone)]
@@ -62,6 +65,14 @@ impl DbHandle {
     }
     pub fn redo(&self) {
         self.outgoing.send(AppAction::Redo).unwrap();
+    }
+
+    pub fn new_db(&self) {
+        self.outgoing.send(AppAction::NewDB).unwrap();
+    }
+
+    pub fn load_db(&self) {
+        self.outgoing.send(AppAction::LoadDB).unwrap();
     }
 
     pub fn new_piece(&self) -> oneshot::Receiver<PieceId> {
@@ -120,6 +131,8 @@ impl DbHandle {
 pub enum AppAction {
     Undo,
     Redo,
+    NewDB,
+    LoadDB,
     Db(DbAction),
 }
 
@@ -163,6 +176,43 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
             AppAction::Redo => {
                 let mut db = data.write().unwrap();
                 db.redo();
+            }
+            AppAction::NewDB => {
+                let root = if let Some(file) = AsyncFileDialog::new().pick_folder().await {
+                    file.path().to_path_buf()
+                } else {
+                    continue;
+                };
+                if let Ok(new) = DbBackend::init_at_directory(root.clone()).await {
+                    let mut db = data.write().unwrap();
+                    let mut config = Config::load().unwrap();
+                    config.default_dir = Some(root);
+                    config.save().unwrap();
+                    *db = new;
+                } else {
+                    continue;
+                };
+            }
+            AppAction::LoadDB => {
+                let mut root = if let Some(file) = AsyncFileDialog::new()
+                    .add_filter("ArtOrganize Database", &["aodb"])
+                    .pick_file()
+                    .await
+                {
+                    file.path().to_path_buf()
+                } else {
+                    continue;
+                };
+                if let Ok(new) = DbBackend::from_file(root.clone()).await {
+                    let mut db = data.write().unwrap();
+                    let mut config = Config::load().unwrap();
+                    root.pop();
+                    config.default_dir = Some(root);
+                    config.save().unwrap();
+                    *db = new;
+                } else {
+                    continue;
+                };
             }
             AppAction::Db(DbAction::AskBlobs { to, blob_type }) => {
                 let db = data.read().unwrap();

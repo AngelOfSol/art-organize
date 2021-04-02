@@ -148,7 +148,7 @@ impl GuiView for Help {
                     "Each blob will either by the canonical image, or a draft, raw, or variant.",
                     "The first image under the 'Canon' heading will be the thumbnail \
                         or otherwise chosen image when referring to a piece.",
-                    "To create a new piece, goto File > New Piece.  This will \
+                    "To create a new piece, goto Data > New Piece.  This will \
                         create and show an empty piece.",
                     "New pieces will have today as their default 'Date Added' value.",
                     "You may optionally set a base price or a tip price value, \

@@ -46,7 +46,7 @@ impl DbBackend {
         Ok(())
     }
 
-    pub async fn from_path(root: PathBuf) -> anyhow::Result<Self> {
+    pub async fn from_directory(root: PathBuf) -> anyhow::Result<Self> {
         let db = bincode::deserialize::<Db>(&fs::read(data_file(root.clone())).await?)?;
         Ok(Self {
             root,
@@ -54,7 +54,16 @@ impl DbBackend {
         })
     }
 
-    pub async fn init_at_path(root: PathBuf) -> anyhow::Result<Self> {
+    pub async fn from_file(mut root: PathBuf) -> anyhow::Result<Self> {
+        let db = bincode::deserialize::<Db>(&fs::read(root.clone()).await?)?;
+        root.pop();
+        Ok(Self {
+            root,
+            inner: UndoStack::new(db),
+        })
+    }
+
+    pub async fn init_at_directory(root: PathBuf) -> anyhow::Result<Self> {
         let db = Db::default();
         let ret = Self {
             root,
