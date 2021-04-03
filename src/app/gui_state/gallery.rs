@@ -39,21 +39,21 @@ impl GuiView for Gallery {
     }
 
     fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, ui: &imgui::Ui<'_>) {
-        for i in 0..10u32 {
-            let t = Tag {
-                name: format!("tag_{}", i),
-                description: format!("My test description {}", i),
-                added: Local::today().naive_local(),
-                links: Vec::new(),
-            };
-            let tg = Category {
-                name: format!("category_{}", i),
-                color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-                added: Local::today().naive_local(),
-                ..Category::default()
-            };
+        // for i in 0..10u32 {
+        //     let t = Tag {
+        //         name: format!("tag_{}", i),
+        //         description: format!("My test description {}", i),
+        //         added: Local::today().naive_local(),
+        //         links: Vec::new(),
+        //     };
+        //     let tg = Category {
+        //         name: format!("category_{}", i),
+        //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+        //         added: Local::today().naive_local(),
+        //         ..Category::default()
+        //     };
 
-            tag::gallery(ui, &t, &tg);
-        }
+        //     tag::gallery(ui, &t, &tg);
+        // }
     }
 }

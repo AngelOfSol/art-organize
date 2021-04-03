@@ -23,35 +23,35 @@ pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
 pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     view(piece_id, db, ui);
 
-    ui.separator();
+    // ui.separator();
 
-    for i in 0..10u32 {
-        let tg = Category {
-            name: format!("category_{}", i),
-            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-            added: Local::today().naive_local(),
-            ..Category::default()
-        };
-        let raw_color = [
-            tg.color[0] as f32 / 255.0,
-            tg.color[1] as f32 / 255.0,
-            tg.color[2] as f32 / 255.0,
-            tg.color[3] as f32 / 255.0,
-        ];
+    // for i in 0..10u32 {
+    //     let tg = Category {
+    //         name: format!("category_{}", i),
+    //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+    //         added: Local::today().naive_local(),
+    //         ..Category::default()
+    //     };
+    //     let raw_color = [
+    //         tg.color[0] as f32 / 255.0,
+    //         tg.color[1] as f32 / 255.0,
+    //         tg.color[2] as f32 / 255.0,
+    //         tg.color[3] as f32 / 255.0,
+    //     ];
 
-        category::view(ui, &im_str!("{}", tg.name), raw_color);
-        ui.indent();
-        for j in 0..2 {
-            let t = Tag {
-                name: format!("tag_{}", j),
-                description: format!("My test description {}", j),
-                added: Local::today().naive_local(),
-                links: Vec::new(),
-            };
-            tag::view(ui, &t, &tg);
-        }
-        ui.unindent();
-    }
+    //     category::view(ui, &im_str!("{}", tg.name), raw_color);
+    //     ui.indent();
+    //     for j in 0..2 {
+    //         let t = Tag {
+    //             name: format!("tag_{}", j),
+    //             description: format!("My test description {}", j),
+    //             added: Local::today().naive_local(),
+    //             links: Vec::new(),
+    //         };
+    //         tag::view(ui, &t, &tg);
+    //     }
+    //     ui.unindent();
+    // }
 }
 
 pub enum EditPieceResponse {
@@ -173,31 +173,31 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
 
     // TODO fix this up to the actual tags
 
-    ui.separator();
+    // ui.separator();
 
-    for i in 0..10u32 {
-        let tg = Category {
-            name: format!("category_{}", i),
-            color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-            added: Local::today().naive_local(),
-            ..Category::default()
-        };
+    // for i in 0..10u32 {
+    //     let tg = Category {
+    //         name: format!("category_{}", i),
+    //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
+    //         added: Local::today().naive_local(),
+    //         ..Category::default()
+    //     };
 
-        for j in 0..2 {
-            let t = Tag {
-                name: format!("tag_{}", j),
-                description: format!("My test description {}", j),
-                added: Local::today().naive_local(),
-                links: Vec::new(),
-            };
-            tag::edit(ui, &t, &tg);
-        }
-    }
+    //     for j in 0..2 {
+    //         let t = Tag {
+    //             name: format!("tag_{}", j),
+    //             description: format!("My test description {}", j),
+    //             added: Local::today().naive_local(),
+    //             links: Vec::new(),
+    //         };
+    //         tag::edit(ui, &t, &tg);
+    //     }
+    // }
 
-    ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
-        .hint(im_str!("Add Tag"))
-        .resize_buffer(true)
-        .build();
+    // ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
+    //     .hint(im_str!("Add Tag"))
+    //     .resize_buffer(true)
+    //     .build();
 
     if confirm_delete_popup(ui) {
         EditPieceResponse::Delete

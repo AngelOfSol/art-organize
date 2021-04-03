@@ -74,10 +74,10 @@ categories have:
 - startup message indicating the user needs to set a default database directory
 - add new database/load database file options
     - auto set default database to most recently loaded
+- bug check on image loading
+    -fixed
 
 v0.1 milestone
-- bug check on image loading
-    - change image id to hash
 - release on twitter 
 
 
