@@ -44,6 +44,19 @@ impl App {
 
             self.gui_handle.forward_image(blob_id, image, is_thumbnail);
         }
+        {
+            let mut gui_state = self.gui_state.write().unwrap();
+            let db = self.gui_handle.read().unwrap();
+            let invalid = gui_state
+                .images
+                .keys()
+                .filter(|id| !db.exists(**id))
+                .copied()
+                .collect::<Vec<_>>();
+            for key in invalid {
+                gui_state.invalidate(&key);
+            }
+        }
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, window: PhysicalSize<f32>) {

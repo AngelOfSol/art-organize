@@ -14,7 +14,6 @@ impl GuiView for Help {
             items(
                 ui,
                 &[
-                    "Most UI elements have tooltips, hover over them to find out!",
                     "Most screens have buttons to click to bring you to further detail.",
                     "Double-right click to go back to the previous screen.",
                 ],

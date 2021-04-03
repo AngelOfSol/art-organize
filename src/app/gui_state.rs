@@ -1,8 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
-    fs::File,
-    io::BufReader,
     ops::{Deref, DerefMut},
     path::PathBuf,
     sync::{mpsc as std_mpsc, Arc, RwLock},
@@ -80,7 +78,15 @@ pub struct InnerGuiState {
     pub thumbnails: BTreeMap<BlobId, TextureImage>,
     pub images: BTreeMap<BlobId, TextureImage>,
 
-    requested: BTreeSet<BlobId>,
+    pub requested: BTreeSet<BlobId>,
+}
+
+impl InnerGuiState {
+    pub fn invalidate(&mut self, id: &BlobId) {
+        self.images.remove(id);
+        self.thumbnails.remove(id);
+        self.requested.remove(id);
+    }
 }
 
 pub trait GuiView: Sync + Send + Debug {
@@ -112,7 +118,6 @@ pub enum GuiAction {
     },
     NewPiece,
     Back,
-    Reset,
     Push(Box<dyn GuiView>),
     NewDB,
     LoadDB,
@@ -216,31 +221,26 @@ async fn gui_actor(
                     .push(Box::new(PieceView { id, edit: false }));
             }
             GuiAction::RequestImage(blob_id) => {
-                let read = db.read().unwrap();
+                let outgoing_images = outgoing_images.clone();
+                let db = db.clone();
+                let gui_state = gui_state.clone();
+                tokio::task::spawn_blocking(move || {
+                    let read = db.read().unwrap();
 
-                {
-                    let mut gui_state = gui_state.write().unwrap();
-                    if gui_state.inner.requested.contains(&blob_id) {
-                        continue;
-                    } else {
+                    let hash = read[blob_id].hash;
+                    {
+                        let mut gui_state = gui_state.write().unwrap();
+                        if gui_state.inner.requested.contains(&blob_id) {
+                            return;
+                        }
                         gui_state.inner.requested.insert(blob_id);
                     }
-                }
 
-                let hash = read[blob_id].hash;
-                let storage = read.storage_for(blob_id);
+                    let storage = read.storage_for(blob_id);
 
-                let outgoing_images = outgoing_images.clone();
+                    let gui_state = gui_state.clone();
 
-                let gui_state = gui_state.clone();
-
-                tokio::task::spawn_blocking(move || {
-                    let test = File::open(&storage)
-                        .map_err(|err| err.into())
-                        .and_then(|file| {
-                            let file = BufReader::new(file);
-                            RawImage::make(file, hash)
-                        });
+                    let test = RawImage::make(storage, hash);
 
                     match test {
                         Ok((raw, thumb)) => {
@@ -277,10 +277,7 @@ async fn gui_actor(
                 let mut gui_state = gui_state.write().unwrap();
                 gui_state.view_stack.push(state);
             }
-            GuiAction::Reset => {
-                let mut gui_state = gui_state.write().unwrap();
-                *gui_state = GuiState::default();
-            }
+
             GuiAction::NewDB => {
                 db.new_db();
                 let mut gui_state = gui_state.write().unwrap();

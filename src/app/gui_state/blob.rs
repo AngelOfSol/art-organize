@@ -53,23 +53,25 @@ impl GuiView for BlobView {
         ui: &imgui::Ui<'_>,
     ) {
         let db = gui_handle.db.read().unwrap();
+        if db.exists(self.id) {
+            if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
+                self.edit = !self.edit;
+            }
 
-        if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
-            self.edit = !self.edit;
-        }
-        if !self.edit {
-            blob::view(self.id, &db, ui);
-        } else {
-            match blob::edit(self.id, &db, ui) {
-                EditBlobResponse::None => {}
-                EditBlobResponse::Changed(data) => {
-                    gui_handle.update_blob(data);
-                }
-                EditBlobResponse::Deleted(id) => {
-                    gui_handle.delete_blob(id);
-                    gui_handle.go_back();
-                }
-            };
+            if !self.edit {
+                blob::view(self.id, &db, ui);
+            } else {
+                match blob::edit(self.id, &db, ui) {
+                    EditBlobResponse::None => {}
+                    EditBlobResponse::Changed(data) => {
+                        gui_handle.update_blob(data);
+                    }
+                    EditBlobResponse::Deleted(id) => {
+                        gui_handle.delete_blob(id);
+                        gui_handle.go_back();
+                    }
+                };
+            }
         }
     }
 }

@@ -84,25 +84,26 @@ impl GuiView for PieceView {
     fn draw_explorer(
         &mut self,
         gui_handle: &super::GuiHandle,
-        _gui_state: &super::InnerGuiState,
+        _: &super::InnerGuiState,
         ui: &imgui::Ui<'_>,
     ) {
         let db = gui_handle.db.read().unwrap();
-
-        if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
-            self.edit = !self.edit;
-        }
-        if !self.edit {
-            piece::view_with_tags(self.id, &db, ui);
-        } else {
-            match piece::edit(self.id, &db, ui) {
-                EditPieceResponse::None => {}
-                EditPieceResponse::Edit(edit) => {
-                    gui_handle.update_piece(edit);
-                }
-                EditPieceResponse::Delete => {
-                    gui_handle.delete_piece(self.id);
-                    gui_handle.go_back();
+        if db.exists(self.id) {
+            if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
+                self.edit = !self.edit;
+            }
+            if !self.edit {
+                piece::view_with_tags(self.id, &db, ui);
+            } else {
+                match piece::edit(self.id, &db, ui) {
+                    EditPieceResponse::None => {}
+                    EditPieceResponse::Edit(edit) => {
+                        gui_handle.update_piece(edit);
+                    }
+                    EditPieceResponse::Delete => {
+                        gui_handle.delete_piece(self.id);
+                        gui_handle.go_back();
+                    }
                 }
             }
         }

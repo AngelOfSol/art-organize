@@ -1,8 +1,6 @@
-use std::io::{BufRead, Seek};
-
-use imgui::TextureId;
-
 use crate::consts::THUMBNAIL_SIZE;
+use imgui::TextureId;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImageGeneric<T> {
@@ -16,8 +14,8 @@ pub type RawImage = ImageGeneric<Vec<u8>>;
 pub type TextureImage = ImageGeneric<TextureId>;
 
 impl RawImage {
-    pub fn make<I: BufRead + Seek>(buffer: I, hash: u64) -> anyhow::Result<(Self, Self)> {
-        let image = image::io::Reader::new(buffer)
+    pub fn make(path: PathBuf, hash: u64) -> anyhow::Result<(Self, Self)> {
+        let image = image::io::Reader::open(&path)?
             .with_guessed_format()?
             .decode()?;
         let thumbnail = image.thumbnail(THUMBNAIL_SIZE as u32, THUMBNAIL_SIZE as u32);

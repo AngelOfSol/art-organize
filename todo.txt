@@ -77,6 +77,7 @@ categories have:
 
 v0.1 milestone
 - bug check on image loading
+    - change image id to hash
 - release on twitter 
 
 
@@ -95,7 +96,7 @@ v0.2 and beyond
 - add config/settings info to allow user to change style
 - image/thumbnail invalidation based on matching the hashes.
 - think about removing media type?
-
+- markdown renderer
 
 
 
