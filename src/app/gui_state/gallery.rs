@@ -25,12 +25,10 @@ impl GuiView for Gallery {
                 .or_else(|| blobs.find(|id| db[id].blob_type == BlobType::Variant))
         });
 
-        if let Some(id) =
-            gallery::render(ui, blobs, &gui_handle, &gui_state.thumbnails, |blob, ui| {
-                let piece_id = db.pieces_for_blob(blob).next().unwrap();
-                piece::view(piece_id, &db, ui);
-            })
-        {
+        if let Some(id) = gallery::render(ui, blobs, &gui_handle, &gui_state.thumbnails, |blob| {
+            let piece_id = db.pieces_for_blob(blob).next().unwrap();
+            piece::view(piece_id, &db, ui);
+        }) {
             gui_handle.goto(PieceView {
                 id: db.pieces_for_blob(id).next().unwrap(),
                 edit: false,

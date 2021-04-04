@@ -6,11 +6,10 @@ pub use self::{
     media_type::MediaType,
     piece::{Piece, PieceId},
     source_type::SourceType,
-    tag::Tag,
-    tag_category::Category,
+    tag::{Tag, TagId},
+    tag_category::{Category, CategoryId},
 };
-use self::{tag::TagId, tag_category::CategoryId};
-use commands::AttachBlob;
+use commands::{AttachBlob, AttachCategory};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -51,8 +50,21 @@ impl Db {
         self.media.insert((src, dest))
     }
 
+    pub fn attach_category(&mut self, AttachCategory { src, dest }: AttachCategory) -> bool {
+        match dest {
+            Some(new_category) => {
+                self.tag_category.insert(src, new_category);
+                true
+            }
+            None => self.tag_category.remove(&src).is_some(),
+        }
+    }
+
     pub fn create_piece(&mut self, data: Piece) -> PieceId {
         self.pieces.insert(data)
+    }
+    pub fn create_tag(&mut self, data: Tag) -> TagId {
+        self.tags.insert(data)
     }
 
     pub fn blobs_for_piece(&self, piece: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
@@ -66,6 +78,11 @@ impl Db {
             .iter()
             .filter(move |(_, id)| id == &blob)
             .map(|(id, _)| *id)
+    }
+
+    pub fn primary_blob_for_piece(&self, piece: PieceId) -> Option<BlobId> {
+        self.blobs_for_piece(piece)
+            .find(|blob_id| self[blob_id].blob_type == BlobType::Canon)
     }
 
     pub fn tags_for_piece(&self, piece: PieceId) -> impl Iterator<Item = TagId> + Clone + '_ {

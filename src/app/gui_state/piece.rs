@@ -44,7 +44,7 @@ impl GuiView for PieceView {
                     blob_ids_of_type,
                     &gui_handle,
                     &gui_state.thumbnails,
-                    |blob_id, ui| {
+                    |blob_id| {
                         blob::tooltip(blob_id, &db, ui);
                     },
                 ) {

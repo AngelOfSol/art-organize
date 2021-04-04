@@ -76,17 +76,19 @@ categories have:
     - auto set default database to most recently loaded
 - bug check on image loading
     -fixed
-
-v0.1 milestone
 - release on twitter 
 
-
-v0.2 and beyond
-- save image to file
+v0.2 milestone
+- implement creating tags
 - implement adding tags
 - implement editing tags
 - implement viewing tag list
 - implement categories
+- save image to file
+
+
+
+v0.3 and beyond
 - implement searching
 - implement hyperlinks
 - add context menus to edit blobs in the piece screen
@@ -94,7 +96,6 @@ v0.2 and beyond
 - add a settings screen
 - allow user to add contextual shell commands via the settings screen
 - add config/settings info to allow user to change style
-- image/thumbnail invalidation based on matching the hashes.
 - think about removing media type?
 - markdown renderer
 

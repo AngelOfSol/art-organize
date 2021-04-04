@@ -22,3 +22,12 @@ impl IdExist for CategoryId {
         db.categories.has(self)
     }
 }
+
+impl<'a, T: Copy> IdExist for &'a T
+where
+    T: IdExist,
+{
+    fn exists_in(self, db: &Db) -> bool {
+        db.exists(*self)
+    }
+}

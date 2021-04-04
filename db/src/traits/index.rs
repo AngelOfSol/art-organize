@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-use crate::{tag::TagId, Blob, BlobId, Db, Piece, PieceId, Tag};
+use crate::{Blob, BlobId, Category, CategoryId, Db, Piece, PieceId, Tag, TagId};
 
 impl Index<PieceId> for Db {
     type Output = Piece;
@@ -23,6 +23,14 @@ impl Index<TagId> for Db {
 
     fn index(&self, index: TagId) -> &Self::Output {
         &self.tags[index]
+    }
+}
+
+impl Index<CategoryId> for Db {
+    type Output = Category;
+
+    fn index(&self, index: CategoryId) -> &Self::Output {
+        &self.categories[index]
     }
 }
 

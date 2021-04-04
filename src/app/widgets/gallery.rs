@@ -12,7 +12,7 @@ use crate::{
 
 use super::blob;
 
-pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
+pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId)>(
     ui: &Ui,
     blobs: I,
     gui_handle: &GuiHandle,
@@ -29,7 +29,7 @@ pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
                 blob::ThumbnailResponse::None => {}
                 blob::ThumbnailResponse::Hovered => {
                     ui.tooltip(|| {
-                        tooltip(blob, ui);
+                        tooltip(blob);
                     });
                 }
                 blob::ThumbnailResponse::Clicked => {
@@ -52,7 +52,7 @@ pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId, &Ui<'_>)>(
                     }
                     if ui.is_item_hovered() {
                         ui.tooltip(|| {
-                            tooltip(blob, ui);
+                            tooltip(blob);
                         });
                     }
                 });

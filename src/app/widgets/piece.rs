@@ -3,7 +3,7 @@ use chrono::Local;
 use db::{commands::EditPiece, Category, Db, Piece, PieceId, Tag};
 use imgui::{im_str, Ui};
 
-use super::{combo_box, confirm::confirm_delete_popup, date};
+use super::{confirm::confirm_delete_popup, date, enum_combo_box};
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -78,7 +78,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         });
     }
 
-    if let Some(source_type) = combo_box(ui, im_str!("Source Type"), &piece.source_type) {
+    if let Some(source_type) = enum_combo_box(ui, im_str!("Source Type"), &piece.source_type) {
         return EditPieceResponse::Edit(EditPiece {
             id: piece_id,
             data: Piece {
@@ -88,7 +88,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         });
     }
 
-    if let Some(media_type) = combo_box(ui, im_str!("Media Type"), &piece.media_type) {
+    if let Some(media_type) = enum_combo_box(ui, im_str!("Media Type"), &piece.media_type) {
         return EditPieceResponse::Edit(EditPiece {
             id: piece_id,
             data: Piece {
@@ -175,6 +175,12 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
 
     // ui.separator();
 
+    // // use a combo box here instead
+    // ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
+    //     .hint(im_str!("Add Tag"))
+    //     .resize_buffer(true)
+    //     .build();
+
     // for i in 0..10u32 {
     //     let tg = Category {
     //         name: format!("category_{}", i),
@@ -193,11 +199,6 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
     //         tag::edit(ui, &t, &tg);
     //     }
     // }
-
-    // ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
-    //     .hint(im_str!("Add Tag"))
-    //     .resize_buffer(true)
-    //     .build();
 
     if confirm_delete_popup(ui) {
         EditPieceResponse::Delete

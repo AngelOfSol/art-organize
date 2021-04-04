@@ -6,7 +6,7 @@ use crate::{
     raw_image::TextureImage,
 };
 
-use super::{combo_box, confirm::confirm_delete_popup, date};
+use super::{confirm::confirm_delete_popup, date, enum_combo_box};
 
 pub fn tooltip(blob_id: BlobId, db: &Db, ui: &Ui<'_>) {
     let blob = &db[blob_id];
@@ -48,7 +48,7 @@ pub fn edit(blob_id: BlobId, db: &Db, ui: &Ui<'_>) -> EditBlobResponse {
         });
     }
 
-    if let Some(blob_type) = combo_box(ui, im_str!("Blob Type"), &blob.blob_type) {
+    if let Some(blob_type) = enum_combo_box(ui, im_str!("Blob Type"), &blob.blob_type) {
         return EditBlobResponse::Changed(EditBlob {
             id: blob_id,
             data: Blob {

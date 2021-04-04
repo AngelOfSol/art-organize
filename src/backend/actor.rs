@@ -6,8 +6,8 @@ use std::{
 };
 
 use db::{
-    commands::{AttachBlob, EditBlob, EditPiece},
-    BlobId, BlobType, Db, Piece, PieceId,
+    commands::{AttachBlob, AttachCategory, EditBlob, EditPiece, EditTag},
+    BlobId, BlobType, Db, Piece, PieceId, Tag, TagId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use regex::Regex;
@@ -83,6 +83,14 @@ impl DbHandle {
         rx
     }
 
+    pub fn new_tag(&self) -> oneshot::Receiver<TagId> {
+        let (tx, rx) = oneshot::channel();
+        self.outgoing
+            .send(AppAction::Db(DbAction::NewTag(tx)))
+            .unwrap();
+        rx
+    }
+
     pub fn update_piece(&self, data: EditPiece) {
         self.outgoing
             .send(AppAction::Db(DbAction::EditPiece(data)))
@@ -91,6 +99,11 @@ impl DbHandle {
     pub fn update_blob(&self, data: EditBlob) {
         self.outgoing
             .send(AppAction::Db(DbAction::EditBlob(data)))
+            .unwrap();
+    }
+    pub fn update_tag(&self, data: EditTag) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::EditTag(data)))
             .unwrap();
     }
 
@@ -103,6 +116,19 @@ impl DbHandle {
         self.outgoing
             .send(AppAction::Db(DbAction::DeleteBlob(id)))
             .unwrap();
+    }
+    pub fn delete_tag(&self, id: TagId) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::DeleteTag(id)))
+            .unwrap();
+    }
+
+    pub fn attach_category(&self, attach: AttachCategory) {
+        // self.outgoing
+        // .send(AppAction::Db(DbAction::DeleteTag(id)))
+        // .unwrap();
+        todo!()
+        //
     }
 
     pub fn ask_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
@@ -139,10 +165,14 @@ pub enum AppAction {
 #[derive(Debug)]
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
+    NewTag(oneshot::Sender<TagId>),
     EditPiece(EditPiece),
     EditBlob(EditBlob),
+    EditTag(EditTag),
     DeletePiece(PieceId),
     DeleteBlob(BlobId),
+    DeleteTag(TagId),
+    AttachCategory(AttachCategory),
     AskBlobs {
         to: PieceId,
         blob_type: BlobType,
@@ -351,8 +381,16 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                             std::fs::remove_file(from).unwrap();
                         }
                     }
+                    DbAction::EditTag(edit) => {
+                        // TODO log falses here
+                        db.edit(edit);
+                    }
                     DbAction::NewPiece(sender) => {
                         let id = db.create_piece(Piece::default());
+                        sender.send(id).unwrap();
+                    }
+                    DbAction::NewTag(sender) => {
+                        let id = db.create_tag(Tag::default());
                         sender.send(id).unwrap();
                     }
                     DbAction::DeletePiece(id) => {
@@ -360,6 +398,12 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     }
                     DbAction::DeleteBlob(id) => {
                         assert!(db.delete(id));
+                    }
+                    DbAction::DeleteTag(id) => {
+                        assert!(db.delete(id));
+                    }
+                    DbAction::AttachCategory(attach) => {
+                        assert!(db.attach_category(attach));
                     }
                     DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } | DbAction::CleanBlobs => {
                         unreachable!()
