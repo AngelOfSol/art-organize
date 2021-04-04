@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use imgui::{im_str, ComboBox, ComboBoxPreviewMode, ImStr, ImString, Selectable, Ui};
 use strum::IntoEnumIterator;
@@ -11,7 +11,7 @@ pub mod gallery;
 pub mod piece;
 pub mod tag;
 
-pub fn enum_combo_box<T: IntoEnumIterator + Display + Eq>(
+pub fn enum_combo_box<T: IntoEnumIterator + Display + Eq + Debug>(
     ui: &Ui<'_>,
     label: &'_ ImStr,
     value: &T,
@@ -19,7 +19,7 @@ pub fn enum_combo_box<T: IntoEnumIterator + Display + Eq>(
     combo_box(ui, label, T::iter(), value, |item| item.to_string().into())
 }
 
-pub fn combo_box<I: Iterator<Item = T>, T: Eq, F: Fn(&T) -> ImString>(
+pub fn combo_box<I: Iterator<Item = T>, T: Eq + Debug, F: Fn(&T) -> ImString>(
     ui: &Ui<'_>,
     label: &'_ ImStr,
     items: I,
@@ -31,8 +31,9 @@ pub fn combo_box<I: Iterator<Item = T>, T: Eq, F: Fn(&T) -> ImString>(
         .preview_mode(ComboBoxPreviewMode::Full)
         .preview_value(&im_str!("{}", f(value)))
         .build(ui, || {
-            for item in items {
-                if Selectable::new(&im_str!("{}", f(value)))
+            for (count, item) in items.enumerate() {
+                let _id = ui.push_id(count as i32);
+                if Selectable::new(&im_str!("{}", f(&item)))
                     .selected(value == &item)
                     .build(ui)
                 {

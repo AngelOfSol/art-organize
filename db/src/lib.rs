@@ -66,6 +66,9 @@ impl Db {
     pub fn create_tag(&mut self, data: Tag) -> TagId {
         self.tags.insert(data)
     }
+    pub fn create_category(&mut self, data: Category) -> CategoryId {
+        self.categories.insert(data)
+    }
 
     pub fn blobs_for_piece(&self, piece: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
         self.media

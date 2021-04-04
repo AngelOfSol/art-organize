@@ -2,7 +2,7 @@ use chrono::Local;
 use db::{BlobType, Category, Tag};
 use imgui::{im_str, Selectable};
 
-use super::{piece::PieceView, tag::TagView, GuiHandle, GuiView};
+use super::{category::CategoryView, piece::PieceView, tag::TagView, GuiHandle, GuiView};
 use crate::app::widgets::*;
 
 #[derive(Debug)]
@@ -28,6 +28,7 @@ impl GuiView for TagList {
         ui.separator();
         ui.columns(2, im_str!("tag list"), true);
         for (tag_id, tag) in db.tags() {
+            let _id = ui.push_id(&im_str!("{}", tag_id));
             if Selectable::new(&im_str!("{}", tag.name))
                 .span_all_columns(false)
                 .build(ui)
@@ -49,7 +50,10 @@ impl GuiView for TagList {
                     .span_all_columns(false)
                     .build(ui)
                 {
-                    todo!()
+                    gui_handle.goto(CategoryView {
+                        id: category_id,
+                        edit: false,
+                    });
                 }
                 ui.same_line();
                 ui.text_colored(
@@ -73,23 +77,25 @@ impl GuiView for TagList {
             gui_handle.request_new_tag();
         }
         if ui.button(im_str!("New Category")) {
-            //
+            gui_handle.request_new_category();
         }
-        // for i in 0..10u32 {
-        //     let t = Tag {
-        //         name: format!("tag_{}", i),
-        //         description: format!("My test description {}", i),
-        //         added: Local::today().naive_local(),
-        //         links: Vec::new(),
-        //     };
-        //     let tg = Category {
-        //         name: format!("category_{}", i),
-        //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-        //         added: Local::today().naive_local(),
-        //         ..Category::default()
-        //     };
-
-        //     tag::gallery(ui, &t, &tg);
-        // }
+        ui.separator();
+        let db = gui_handle.db.read().unwrap();
+        for (category_id, category) in db.categories() {
+            if Selectable::new(&im_str!("{}", category.name))
+                .span_all_columns(false)
+                .build(ui)
+            {
+                gui_handle.goto(CategoryView {
+                    id: category_id,
+                    edit: false,
+                });
+            }
+            ui.same_line();
+            ui.text_colored(
+                [0.4, 0.4, 0.4, 1.0],
+                im_str!("{}", db.tags_for_category(category_id).count()),
+            );
+        }
     }
 }

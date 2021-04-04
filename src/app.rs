@@ -194,6 +194,7 @@ impl App {
             .resizable(false)
             .collapsible(false)
             .scroll_bar(false)
+            .title_bar(false)
             .position(
                 layout[&LayoutIds::Main].position.into(),
                 imgui::Condition::Always,
@@ -236,7 +237,7 @@ impl App {
                 }
             });
 
-        Window::new(im_str!("Tags"))
+        Window::new(im_str!("Explorer"))
             .movable(false)
             .resizable(false)
             .collapsible(true)

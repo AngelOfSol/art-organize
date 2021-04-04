@@ -15,7 +15,7 @@ use crate::{
     raw_image::{RawImage, TextureImage},
 };
 
-use self::{gallery::Gallery, piece::PieceView, tag::TagView};
+use self::{category::CategoryView, gallery::Gallery, piece::PieceView, tag::TagView};
 
 pub mod blob;
 pub mod category;
@@ -121,6 +121,7 @@ pub enum GuiAction {
     },
     NewPiece,
     NewTag,
+    NewCategory,
     Back,
     Push(Box<dyn GuiView>),
     NewDB,
@@ -159,6 +160,9 @@ impl GuiActionHandle {
     }
     pub fn request_new_tag(&self) {
         self.outgoing.send(GuiAction::NewTag).unwrap();
+    }
+    pub fn request_new_category(&self) {
+        self.outgoing.send(GuiAction::NewCategory).unwrap();
     }
 
     pub fn request_load_image(&self, blob_id: BlobId) {
@@ -234,6 +238,14 @@ async fn gui_actor(
                 gui_state
                     .view_stack
                     .push(Box::new(TagView { id, edit: false }));
+            }
+            GuiAction::NewCategory => {
+                let id = db.new_category().await.unwrap();
+                let mut gui_state = gui_state.write().unwrap();
+
+                gui_state
+                    .view_stack
+                    .push(Box::new(CategoryView { id, edit: false }));
             }
             GuiAction::RequestImage(blob_id) => {
                 let outgoing_images = outgoing_images.clone();

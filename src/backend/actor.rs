@@ -6,8 +6,8 @@ use std::{
 };
 
 use db::{
-    commands::{AttachBlob, AttachCategory, EditBlob, EditPiece, EditTag},
-    BlobId, BlobType, Db, Piece, PieceId, Tag, TagId,
+    commands::{AttachBlob, AttachCategory, EditBlob, EditCategory, EditPiece, EditTag},
+    BlobId, BlobType, Category, CategoryId, Db, Piece, PieceId, Tag, TagId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use regex::Regex;
@@ -90,6 +90,13 @@ impl DbHandle {
             .unwrap();
         rx
     }
+    pub fn new_category(&self) -> oneshot::Receiver<CategoryId> {
+        let (tx, rx) = oneshot::channel();
+        self.outgoing
+            .send(AppAction::Db(DbAction::NewCategory(tx)))
+            .unwrap();
+        rx
+    }
 
     pub fn update_piece(&self, data: EditPiece) {
         self.outgoing
@@ -104,6 +111,11 @@ impl DbHandle {
     pub fn update_tag(&self, data: EditTag) {
         self.outgoing
             .send(AppAction::Db(DbAction::EditTag(data)))
+            .unwrap();
+    }
+    pub fn update_category(&self, data: EditCategory) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::EditCategory(data)))
             .unwrap();
     }
 
@@ -122,13 +134,16 @@ impl DbHandle {
             .send(AppAction::Db(DbAction::DeleteTag(id)))
             .unwrap();
     }
+    pub fn delete_category(&self, id: CategoryId) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::DeleteCategory(id)))
+            .unwrap();
+    }
 
     pub fn attach_category(&self, attach: AttachCategory) {
-        // self.outgoing
-        // .send(AppAction::Db(DbAction::DeleteTag(id)))
-        // .unwrap();
-        todo!()
-        //
+        self.outgoing
+            .send(AppAction::Db(DbAction::AttachCategory(attach)))
+            .unwrap();
     }
 
     pub fn ask_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
@@ -166,12 +181,15 @@ pub enum AppAction {
 pub enum DbAction {
     NewPiece(oneshot::Sender<PieceId>),
     NewTag(oneshot::Sender<TagId>),
+    NewCategory(oneshot::Sender<CategoryId>),
     EditPiece(EditPiece),
     EditBlob(EditBlob),
     EditTag(EditTag),
+    EditCategory(EditCategory),
     DeletePiece(PieceId),
     DeleteBlob(BlobId),
     DeleteTag(TagId),
+    DeleteCategory(CategoryId),
     AttachCategory(AttachCategory),
     AskBlobs {
         to: PieceId,
@@ -385,12 +403,20 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         // TODO log falses here
                         db.edit(edit);
                     }
+                    DbAction::EditCategory(edit) => {
+                        // TODO log falses here
+                        db.edit(edit);
+                    }
                     DbAction::NewPiece(sender) => {
                         let id = db.create_piece(Piece::default());
                         sender.send(id).unwrap();
                     }
                     DbAction::NewTag(sender) => {
                         let id = db.create_tag(Tag::default());
+                        sender.send(id).unwrap();
+                    }
+                    DbAction::NewCategory(sender) => {
+                        let id = db.create_category(Category::default());
                         sender.send(id).unwrap();
                     }
                     DbAction::DeletePiece(id) => {
@@ -400,6 +426,9 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         assert!(db.delete(id));
                     }
                     DbAction::DeleteTag(id) => {
+                        assert!(db.delete(id));
+                    }
+                    DbAction::DeleteCategory(id) => {
                         assert!(db.delete(id));
                     }
                     DbAction::AttachCategory(attach) => {

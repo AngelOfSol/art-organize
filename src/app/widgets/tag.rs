@@ -77,19 +77,23 @@ pub fn edit(tag_id: TagId, db: &Db, ui: &Ui<'_>) -> EditTagResponse {
             },
         });
     }
+    let x = std::iter::once(None).chain(db.categories().map(|(id, _)| Some(id)));
 
     if let Some(new_id) = combo_box(
         ui,
         &im_str!("Category"),
-        std::iter::once(None).chain(db.categories().map(|(id, _)| Some(id))),
+        x,
         &db.category_for_tag(tag_id),
         |id| match id {
-            Some(category_id) => im_str!("{}", db[category_id].name),
+            Some(category_id) => im_str!("{}", &db[category_id].name),
             None => Default::default(),
         },
     ) {
-        //
-    };
+        return EditTagResponse::AttachCategory(AttachCategory {
+            src: tag_id,
+            dest: new_id,
+        });
+    }
 
     if ui.button(im_str!("Delete")) {
         ui.open_popup(im_str!("Confirm Delete"));
