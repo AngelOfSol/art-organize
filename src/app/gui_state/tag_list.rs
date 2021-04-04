@@ -1,21 +1,13 @@
-use chrono::Local;
-use db::{BlobType, Category, Tag};
 use imgui::{im_str, Selectable};
 
-use super::{category::CategoryView, piece::PieceView, tag::TagView, GuiHandle, GuiView};
-use crate::app::widgets::*;
+use super::{category::CategoryView, tag::TagView, GuiHandle, GuiView};
 
 #[derive(Debug)]
 pub struct TagList;
 
 impl GuiView for TagList {
     fn update(&self, _: &super::GuiHandle) {}
-    fn draw_main(
-        &mut self,
-        gui_handle: &GuiHandle,
-        gui_state: &super::InnerGuiState,
-        ui: &imgui::Ui<'_>,
-    ) {
+    fn draw_main(&mut self, gui_handle: &GuiHandle, _: &super::InnerGuiState, ui: &imgui::Ui<'_>) {
         let db = gui_handle.db.read().unwrap();
 
         ui.columns(2, im_str!("header"), true);

@@ -1,5 +1,4 @@
-use chrono::Local;
-use db::{BlobType, Category, Tag};
+use db::BlobType;
 
 use super::{piece::PieceView, GuiHandle, GuiView};
 use crate::app::widgets::*;
@@ -36,7 +35,7 @@ impl GuiView for Gallery {
         }
     }
 
-    fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, ui: &imgui::Ui<'_>) {
+    fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, _: &imgui::Ui<'_>) {
         // for i in 0..10u32 {
         //     let t = Tag {
         //         name: format!("tag_{}", i),

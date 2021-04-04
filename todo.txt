@@ -77,13 +77,14 @@ categories have:
 - bug check on image loading
     -fixed
 - release on twitter 
-
-v0.2 milestone
 - implement creating tags
-- implement adding tags
 - implement editing tags
 - implement viewing tag list
 - implement categories
+
+v0.2 milestone
+- implement adding tags
+- category colors
 - save image to file
 
 
@@ -98,6 +99,7 @@ v0.3 and beyond
 - add config/settings info to allow user to change style
 - think about removing media type?
 - markdown renderer
+- clipboard support
 
 
 

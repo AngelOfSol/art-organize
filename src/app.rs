@@ -20,8 +20,6 @@ use winit::dpi::PhysicalSize;
 pub mod gui_state;
 pub mod widgets;
 
-use widgets::*;
-
 pub struct App {
     pub gui_handle: GuiHandle,
     pub gui_state: Arc<RwLock<GuiState>>,
@@ -112,6 +110,12 @@ impl App {
                 ui.menu(im_str!("Data"), || {
                     if MenuItem::new(im_str!("New Piece")).build(ui) {
                         self.gui_handle.request_new_piece();
+                    }
+                    if MenuItem::new(im_str!("New Tag")).build(ui) {
+                        self.gui_handle.request_new_tag();
+                    }
+                    if MenuItem::new(im_str!("New Category")).build(ui) {
+                        self.gui_handle.request_new_category();
                     }
                 });
 

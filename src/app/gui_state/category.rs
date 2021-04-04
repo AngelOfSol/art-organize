@@ -1,9 +1,8 @@
-use super::{piece::PieceView, tag::TagView, GuiView};
+use super::{tag::TagView, GuiView};
 use crate::app::widgets::*;
 use category::EditCategoryResponse;
-use db::{CategoryId, TagId};
+use db::CategoryId;
 use imgui::{im_str, Selectable};
-use tag::EditTagResponse;
 
 #[derive(Debug)]
 pub struct CategoryView {
@@ -21,7 +20,7 @@ impl GuiView for CategoryView {
     fn draw_main(
         &mut self,
         gui_handle: &super::GuiHandle,
-        gui_state: &super::InnerGuiState,
+        _: &super::InnerGuiState,
         ui: &imgui::Ui<'_>,
     ) {
         let db = gui_handle.db.read().unwrap();

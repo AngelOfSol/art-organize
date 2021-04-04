@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use imgui::im_str;
 
 use super::{gallery::Gallery, help::Help, tag_list::TagList, GuiHandle, GuiView};

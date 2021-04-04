@@ -229,7 +229,7 @@ async fn gui_actor(
 
                 gui_state
                     .view_stack
-                    .push(Box::new(PieceView { id, edit: false }));
+                    .push(Box::new(PieceView { id, edit: true }));
             }
             GuiAction::NewTag => {
                 let id = db.new_tag().await.unwrap();
@@ -237,7 +237,7 @@ async fn gui_actor(
 
                 gui_state
                     .view_stack
-                    .push(Box::new(TagView { id, edit: false }));
+                    .push(Box::new(TagView { id, edit: true }));
             }
             GuiAction::NewCategory => {
                 let id = db.new_category().await.unwrap();
@@ -245,7 +245,7 @@ async fn gui_actor(
 
                 gui_state
                     .view_stack
-                    .push(Box::new(CategoryView { id, edit: false }));
+                    .push(Box::new(CategoryView { id, edit: true }));
             }
             GuiAction::RequestImage(blob_id) => {
                 let outgoing_images = outgoing_images.clone();
