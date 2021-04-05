@@ -165,6 +165,8 @@ impl App {
             ui.show_metrics_window(&mut gui_state.show_metrics);
         }
 
+        ui.show_demo_window(&mut true);
+
         Window::new(im_str!("Search"))
             .movable(false)
             .resizable(false)

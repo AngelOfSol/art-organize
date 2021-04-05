@@ -2,7 +2,10 @@ use crate::{app::App, raw_image::RawImage, style::modify_style};
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
-use std::{sync::mpsc, time::Instant};
+use std::{
+    sync::mpsc,
+    time::{Duration, Instant},
+};
 use wgpu::Extent3d;
 use winit::{
     dpi::LogicalSize,
@@ -82,7 +85,9 @@ pub fn run_event_loop(
                 context.window.request_redraw();
             }
             Event::RedrawEventsCleared => {
-                context.render(&mut app);
+                if Instant::now() - context.last_frame >= Duration::from_millis(6) {
+                    context.render(&mut app);
+                }
             }
             _ => (),
         }

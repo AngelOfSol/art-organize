@@ -1,5 +1,7 @@
 use db::{commands::EditCategory, Category, CategoryId, Db};
-use imgui::{im_str, ImStr, Selectable, Ui};
+use imgui::{
+    im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, ColorPicker, ImStr, Selectable, Ui,
+};
 
 use super::{confirm::confirm_delete_popup, date};
 
@@ -68,12 +70,37 @@ pub fn edit(category_id: CategoryId, db: &Db, ui: &Ui<'_>) -> EditCategoryRespon
         });
     }
 
+    let mut color = category.raw_color();
+
+    let result = if ColorEdit::new(im_str!("Color"), &mut color)
+        .alpha(false)
+        .input_mode(ColorEditInputMode::Rgb)
+        .display_mode(ColorEditDisplayMode::Rgb)
+        .format(imgui::ColorFormat::U8)
+        .build(ui)
+    {
+        let mut new_color = [0; 4];
+        for (f_value, i_value) in color.iter().zip(new_color.iter_mut()) {
+            *i_value = (f_value * 255.0) as u8;
+        }
+
+        EditCategoryResponse::Edit(EditCategory {
+            id: category_id,
+            data: Category {
+                color: new_color,
+                ..category.clone()
+            },
+        })
+    } else {
+        EditCategoryResponse::None
+    };
+
     if ui.button(im_str!("Delete")) {
         ui.open_popup(im_str!("Confirm Delete"));
     }
     if confirm_delete_popup(ui) {
         EditCategoryResponse::Delete
     } else {
-        EditCategoryResponse::None
+        result
     }
 }

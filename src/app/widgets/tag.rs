@@ -6,15 +6,6 @@ use imgui::{im_str, Selectable, StyleColor, Ui};
 
 use super::{combo_box, confirm::confirm_delete_popup, date};
 
-pub enum TagResponse {
-    None,
-    Info,
-    Add,
-    AddNegated,
-    Remove,
-    ReplaceSearch,
-}
-
 pub fn view(tag_id: TagId, db: &Db, ui: &Ui<'_>) {
     let tag = &db[tag_id];
     ui.text_wrapped(&im_str!("Name: {}", tag.name));
@@ -105,80 +96,74 @@ pub fn edit(tag_id: TagId, db: &Db, ui: &Ui<'_>) -> EditTagResponse {
     }
 }
 
-pub fn item_view(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
-    let button_size = [ui.text_line_height_with_spacing(); 2];
-    let label = im_str!("{}", t.name);
-    let _id = ui.push_id(&label);
-
-    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
-        return TagResponse::Info;
-    }
-    ui.same_line();
-
-    let _color = ui.push_style_color(StyleColor::Text, tg.raw_color());
-    if Selectable::new(&label).build(ui) {
-        TagResponse::ReplaceSearch
-    } else {
-        TagResponse::None
-    }
+pub enum ItemViewResponse {
+    None,
+    Info,
+    Add,
+    AddNegated,
+    Open,
 }
 
-pub fn item_edit(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
-    let button_size = [ui.text_line_height_with_spacing(); 2];
-    let label = im_str!("{}", t.name);
+pub fn item_view(ui: &Ui, db: &Db, tag_id: TagId) -> ItemViewResponse {
+    let tag = &db[tag_id];
 
+    let button_size = [ui.text_line_height_with_spacing(); 2];
+    let label = im_str!("{}", tag.name);
     let _id = ui.push_id(&label);
 
     if Selectable::new(im_str!("?")).size(button_size).build(ui) {
-        return TagResponse::Info;
+        return ItemViewResponse::Info;
     }
-    ui.same_line();
-
-    if Selectable::new(im_str!("-##Remove"))
-        .size(button_size)
-        .build(ui)
-    {
-        return TagResponse::Remove;
-    }
-
-    ui.same_line();
-
-    let _color = ui.push_style_color(StyleColor::Text, tg.raw_color());
-    if Selectable::new(&label).build(ui) {
-        TagResponse::ReplaceSearch
-    } else {
-        TagResponse::None
-    }
-}
-
-pub fn item_gallery(ui: &Ui, t: &Tag, tg: &Category) -> TagResponse {
-    let button_size = [ui.text_line_height_with_spacing(); 2];
-    let label = im_str!("{}", t.name);
-
-    let _id = ui.push_id(&label);
-
-    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
-        return TagResponse::Info;
-    }
-    ui.same_line();
-
     if Selectable::new(im_str!("+")).size(button_size).build(ui) {
-        return TagResponse::Add;
+        return ItemViewResponse::Add;
     }
-    ui.same_line();
-    if Selectable::new(im_str!("-##Add Negated"))
-        .size(button_size)
-        .build(ui)
-    {
-        return TagResponse::AddNegated;
+    if Selectable::new(im_str!("!")).size(button_size).build(ui) {
+        return ItemViewResponse::AddNegated;
     }
 
-    ui.same_line();
-
-    let _color = ui.push_style_color(StyleColor::Text, tg.raw_color());
-    if Selectable::new(&label).build(ui) {
-        TagResponse::ReplaceSearch
+    let color = if let Some(category_id) = db.category_for_tag(tag_id) {
+        db[category_id].raw_color()
     } else {
-        TagResponse::None
+        ui.style_color(StyleColor::Text)
+    };
+    let _color = ui.push_style_color(StyleColor::Text, color);
+    if Selectable::new(&label).build(ui) {
+        ItemViewResponse::Open
+    } else {
+        ItemViewResponse::None
+    }
+}
+
+pub enum InPieceViewResponse {
+    None,
+    Info,
+    Open,
+    Remove,
+}
+pub fn in_piece_view(ui: &Ui, db: &Db, tag_id: TagId) -> InPieceViewResponse {
+    let tag = &db[tag_id];
+
+    let button_size = [ui.text_line_height_with_spacing(); 2];
+    let label = im_str!("{}", tag.name);
+    let _id = ui.push_id(&label);
+
+    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
+        return InPieceViewResponse::Info;
+    }
+
+    if Selectable::new(im_str!("-")).size(button_size).build(ui) {
+        return InPieceViewResponse::Remove;
+    }
+
+    let color = if let Some(category_id) = db.category_for_tag(tag_id) {
+        db[category_id].raw_color()
+    } else {
+        ui.style_color(StyleColor::Text)
+    };
+    let _color = ui.push_style_color(StyleColor::Text, color);
+    if Selectable::new(&label).build(ui) {
+        InPieceViewResponse::Open
+    } else {
+        InPieceViewResponse::None
     }
 }
