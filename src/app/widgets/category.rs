@@ -1,16 +1,7 @@
 use db::{commands::EditCategory, Category, CategoryId, Db};
-use imgui::{im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, ImStr, Selectable, Ui};
+use imgui::{im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, Ui};
 
 use super::{confirm::confirm_delete_popup, date};
-
-pub fn item_view(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
-    let ret = Selectable::new(im_str!("?"))
-        .size([ui.text_line_height_with_spacing(); 2])
-        .build(ui);
-    ui.same_line();
-    ui.text_colored(raw_color, label);
-    ret
-}
 
 pub fn view(category_id: CategoryId, db: &Db, ui: &Ui<'_>) {
     let category = &db[category_id];
