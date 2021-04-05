@@ -246,7 +246,7 @@ impl App {
         Window::new(im_str!("Explorer"))
             .movable(false)
             .resizable(false)
-            .collapsible(true)
+            .collapsible(false)
             .position(
                 layout[&LayoutIds::Tags].position.into(),
                 imgui::Condition::Always,

@@ -31,7 +31,7 @@ impl GuiView for TagView {
 
         if let Some(blob_id) =
             gallery::render(ui, blob_ids, gui_handle, &gui_state.thumbnails, |blob_id| {
-                piece::view(db.pieces_for_blob(blob_id).next().unwrap(), &db, ui)
+                piece::tooltip(db.pieces_for_blob(blob_id).next().unwrap(), &db, ui)
             })
         {
             let piece_id = db.pieces_for_blob(blob_id).next().unwrap();
