@@ -81,10 +81,19 @@ categories have:
 - implement editing tags
 - implement viewing tag list
 - implement categories
-
-v0.2 milestone
 - implement adding tags
 - category colors
+
+v0.2 milestone
+- handle PSD/CLIP files properly 
+- ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
+    - yumi commissions
+    - miu commissions
+    - undownloaded skeb commissions
+    - emotes
+    - update date and price for all items 
+- link category in tag to category page
+- open tags from piece page
 - save image to file
 
 
@@ -94,6 +103,7 @@ v0.3 and beyond
 - implement hyperlinks
 - add context menus to edit blobs in the piece screen
 - add a statistics screen
+    - allow it to take a search to filter data
 - add a settings screen
 - allow user to add contextual shell commands via the settings screen
 - add config/settings info to allow user to change style
