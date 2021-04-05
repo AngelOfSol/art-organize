@@ -1,9 +1,21 @@
 # CHANGELOG
-## v0.2.0
+## v0.2.0 (unreleased)
 ### Features
 * Adds the ability to create tags with the following fields
   * Name
+    * Names should follow these rules (validation will be added in the future):
+      * Names should be unique
+      * Names should be all lower case
+      * Names should have no whitespace
+      * Names should only contain the following characters:
+        * 0-9 [any digit]
+        * a-z [any lowercase ascii character]
+        * _ [alternative to spaces]
+        * () [used to separate other infomation e.g. hilda_(pokemon) vs hilda_(undernight) vs hilda_(undernight)_(cosplay)]
   * Description
+    * Yes, I know the multiline text editor sucks
+    * Yes, I know adding line breaks manually makes it look weird
+    * I plan to support hyper links (twitter, pixiv, etc) in a different way, but for now they can be stored here
   * Date Added
   * Optionally, a category
 * Adds the ability to create categories with the following fields

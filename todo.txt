@@ -94,6 +94,7 @@ v0.2 milestone
     - update date and price for all items 
 - link category in tag to category page
 - open tags from piece page
+- add button to add default categories
 - save image to file
 
 
