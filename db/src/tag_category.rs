@@ -29,7 +29,7 @@ impl Default for Category {
         Self {
             name: "New Tag Category".to_string(),
             description: String::new(),
-            color: [0; 4],
+            color: [0, 0, 0, 255],
             added: Local::today().naive_local(),
         }
     }

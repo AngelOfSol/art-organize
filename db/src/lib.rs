@@ -9,7 +9,7 @@ pub use self::{
     tag::{Tag, TagId},
     tag_category::{Category, CategoryId},
 };
-use commands::{AttachBlob, AttachCategory};
+use commands::{AttachBlob, AttachCategory, AttachTag};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -58,6 +58,13 @@ impl Db {
             }
             None => self.tag_category.remove(&src).is_some(),
         }
+    }
+    pub fn attach_tag(&mut self, AttachTag { src, dest }: AttachTag) -> bool {
+        self.piece_tags.insert((src, dest))
+    }
+
+    pub fn remove_tag(&mut self, AttachTag { src, dest }: AttachTag) -> bool {
+        self.piece_tags.remove(&(src, dest))
     }
 
     pub fn create_piece(&mut self, data: Piece) -> PieceId {

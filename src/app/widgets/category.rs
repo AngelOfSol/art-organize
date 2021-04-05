@@ -1,7 +1,5 @@
 use db::{commands::EditCategory, Category, CategoryId, Db};
-use imgui::{
-    im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, ColorPicker, ImStr, Selectable, Ui,
-};
+use imgui::{im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, ImStr, Selectable, Ui};
 
 use super::{confirm::confirm_delete_popup, date};
 
@@ -15,11 +13,21 @@ pub fn item_view(ui: &Ui, label: &ImStr, raw_color: [f32; 4]) -> bool {
 }
 
 pub fn view(category_id: CategoryId, db: &Db, ui: &Ui<'_>) {
-    let tag = &db[category_id];
-    ui.text_wrapped(&im_str!("Name: {}", tag.name));
-    ui.text_wrapped(&im_str!("Description: {}", tag.description));
-    // TODO colors
-    date::view("Date Added", &tag.added, ui);
+    let category = &db[category_id];
+    ui.text_wrapped(&im_str!("Name: {}", category.name));
+    ui.text_wrapped(&im_str!("Description: {}", category.description));
+    ui.text(im_str!("Color: "));
+    ui.same_line();
+    ui.text_colored(
+        category.raw_color(),
+        &im_str!(
+            "#{:02X}{:02X}{:02X}",
+            category.color[0],
+            category.color[1],
+            category.color[2]
+        ),
+    );
+    date::view("Date Added", &category.added, ui);
 }
 
 pub enum EditCategoryResponse {

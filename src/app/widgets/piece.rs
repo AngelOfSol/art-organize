@@ -1,7 +1,15 @@
-use db::{commands::EditPiece, Db, Piece, PieceId};
+use db::{
+    commands::{AttachTag, EditPiece},
+    Db, Piece, PieceId,
+};
 use imgui::{im_str, Ui};
+use tag::ItemViewResponse;
 
-use super::{confirm::confirm_delete_popup, date, enum_combo_box};
+use super::{
+    confirm::confirm_delete_popup,
+    date, enum_combo_box,
+    tag::{self, InPieceViewResponse},
+};
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -17,45 +25,78 @@ pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
         ui.text(im_str!("Tipped: ${}", price));
     }
 }
+pub fn tooltip(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
+    let piece = &db[piece_id];
+    ui.text(&im_str!("Name: {}", piece.name));
+    ui.text(&im_str!("Source Type: {}", piece.source_type));
+    ui.text(&im_str!("Media Type: {}", piece.media_type));
+    date::view("Date Added", &piece.added, ui);
+
+    if let Some(price) = piece.base_price {
+        ui.text(im_str!("Price: ${}", price));
+    }
+    if let Some(price) = piece.tip_price {
+        ui.text(im_str!("Tipped: ${}", price));
+    }
+}
 
 pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     view(piece_id, db, ui);
 
-    // ui.separator();
+    ui.separator();
 
-    // for i in 0..10u32 {
-    //     let tg = Category {
-    //         name: format!("category_{}", i),
-    //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-    //         added: Local::today().naive_local(),
-    //         ..Category::default()
-    //     };
-    //     let raw_color = [
-    //         tg.color[0] as f32 / 255.0,
-    //         tg.color[1] as f32 / 255.0,
-    //         tg.color[2] as f32 / 255.0,
-    //         tg.color[3] as f32 / 255.0,
-    //     ];
+    let mut categories = db
+        .tags_for_piece(piece_id)
+        .map(|tag| db.category_for_tag(tag))
+        .flatten()
+        .collect::<Vec<_>>();
+    categories.sort();
+    categories.dedup();
+    categories.sort_by_key(|category_id| &db[category_id].name);
 
-    //     category::view(ui, &im_str!("{}", tg.name), raw_color);
-    //     ui.indent();
-    //     for j in 0..2 {
-    //         let t = Tag {
-    //             name: format!("tag_{}", j),
-    //             description: format!("My test description {}", j),
-    //             added: Local::today().naive_local(),
-    //             links: Vec::new(),
-    //         };
-    //         tag::view(ui, &t, &tg);
-    //     }
-    //     ui.unindent();
-    // }
+    for category_id in categories {
+        ui.text(&im_str!("{}", db[category_id].name));
+        let mut tags = db
+            .tags_for_piece(piece_id)
+            .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
+            .collect::<Vec<_>>();
+        tags.sort_by_key(|tag_id| &db[tag_id].name);
+
+        for tag_id in tags {
+            match tag::item_view(ui, db, tag_id) {
+                ItemViewResponse::None => {}
+                ItemViewResponse::Add => {}
+                ItemViewResponse::AddNegated => {}
+                ItemViewResponse::Open => {}
+            }
+        }
+        ui.spacing();
+    }
+
+    ui.text(im_str!("tag"));
+
+    let mut tags = db
+        .tags_for_piece(piece_id)
+        .filter(|tag_id| db.category_for_tag(*tag_id).is_none())
+        .collect::<Vec<_>>();
+    tags.sort_by_key(|tag_id| &db[tag_id].name);
+
+    for tag_id in tags {
+        match tag::item_view(ui, db, tag_id) {
+            ItemViewResponse::None => {}
+            ItemViewResponse::Add => {}
+            ItemViewResponse::AddNegated => {}
+            ItemViewResponse::Open => {}
+        }
+    }
 }
 
 pub enum EditPieceResponse {
     None,
     Edit(EditPiece),
     Delete,
+    AttachTag(AttachTag),
+    RemoveTag(AttachTag),
 }
 
 pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
@@ -169,34 +210,84 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         ui.open_popup(im_str!("Confirm Delete"));
     }
 
-    // TODO fix this up to the actual tags
+    ui.separator();
 
-    // ui.separator();
+    let mut unused_tags = db
+        .tags()
+        .filter(|(tag_id, _)| {
+            !db.tags_for_piece(piece_id)
+                .any(|piece_tag_id| piece_tag_id == *tag_id)
+        })
+        .collect::<Vec<_>>();
+    unused_tags.sort_by_key(|(_, tag)| &tag.name);
 
-    // // use a combo box here instead
-    // ui.input_text(im_str!("##Add Tag Piece Edit"), &mut Default::default())
-    //     .hint(im_str!("Add Tag"))
-    //     .resize_buffer(true)
-    //     .build();
+    if !unused_tags.is_empty() {
+        let (first_tag, _) = unused_tags[0];
 
-    // for i in 0..10u32 {
-    //     let tg = Category {
-    //         name: format!("category_{}", i),
-    //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-    //         added: Local::today().naive_local(),
-    //         ..Category::default()
-    //     };
+        if let Some(tag_id) = super::combo_box(
+            ui,
+            &im_str!("Add"),
+            unused_tags.into_iter().map(|(id, _)| id),
+            &first_tag,
+            |id| im_str!("{}", db[id].name),
+        ) {
+            return EditPieceResponse::AttachTag(AttachTag {
+                src: piece_id,
+                dest: tag_id,
+            });
+        }
+    }
 
-    //     for j in 0..2 {
-    //         let t = Tag {
-    //             name: format!("tag_{}", j),
-    //             description: format!("My test description {}", j),
-    //             added: Local::today().naive_local(),
-    //             links: Vec::new(),
-    //         };
-    //         tag::edit(ui, &t, &tg);
-    //     }
-    // }
+    let mut categories = db
+        .tags_for_piece(piece_id)
+        .map(|tag| db.category_for_tag(tag))
+        .flatten()
+        .collect::<Vec<_>>();
+    categories.sort();
+    categories.dedup();
+    categories.sort_by_key(|category_id| &db[category_id].name);
+
+    for category_id in categories {
+        ui.text(&im_str!("{}", db[category_id].name));
+        let mut tags = db
+            .tags_for_piece(piece_id)
+            .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
+            .collect::<Vec<_>>();
+        tags.sort_by_key(|tag_id| &db[tag_id].name);
+
+        for tag_id in tags {
+            match tag::in_piece_view(ui, db, tag_id) {
+                InPieceViewResponse::None => (),
+                InPieceViewResponse::Open => (),
+                InPieceViewResponse::Remove => {
+                    return EditPieceResponse::RemoveTag(AttachTag {
+                        src: piece_id,
+                        dest: tag_id,
+                    })
+                }
+            }
+        }
+        ui.spacing();
+    }
+    ui.text(&im_str!("tag"));
+    let mut tags = db
+        .tags_for_piece(piece_id)
+        .filter(|tag_id| db.category_for_tag(*tag_id).is_none())
+        .collect::<Vec<_>>();
+    tags.sort_by_key(|tag_id| &db[tag_id].name);
+
+    for tag_id in tags {
+        match tag::in_piece_view(ui, db, tag_id) {
+            InPieceViewResponse::None => (),
+            InPieceViewResponse::Open => (),
+            InPieceViewResponse::Remove => {
+                return EditPieceResponse::RemoveTag(AttachTag {
+                    src: piece_id,
+                    dest: tag_id,
+                })
+            }
+        }
+    }
 
     if confirm_delete_popup(ui) {
         EditPieceResponse::Delete

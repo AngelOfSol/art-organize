@@ -14,6 +14,8 @@ pub struct Edit<DataId, Data> {
 
 pub type AttachBlob = Attach<PieceId, BlobId>;
 pub type AttachCategory = Attach<TagId, Option<CategoryId>>;
+pub type AttachTag = Attach<PieceId, TagId>;
+
 pub type EditPiece = Edit<PieceId, Piece>;
 pub type EditBlob = Edit<BlobId, Blob>;
 pub type EditTag = Edit<TagId, Tag>;

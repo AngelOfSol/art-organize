@@ -14,7 +14,7 @@ pub struct Tag {
 impl Default for Tag {
     fn default() -> Self {
         Self {
-            name: "New Tag".to_string(),
+            name: "new_tag".to_string(),
             description: String::new(),
             added: Local::today().naive_local(),
             links: Vec::new(),

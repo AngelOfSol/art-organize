@@ -1,4 +1,4 @@
-use imgui::{im_str, Selectable};
+use imgui::{im_str, Selectable, StyleColor};
 
 use super::{category::CategoryView, tag::TagView, GuiHandle, GuiView};
 
@@ -38,14 +38,17 @@ impl GuiView for TagList {
             ui.next_column();
 
             if let Some(category_id) = db.category_for_tag(tag_id) {
-                if Selectable::new(&im_str!("{}", db[category_id].name))
-                    .span_all_columns(false)
-                    .build(ui)
                 {
-                    gui_handle.goto(CategoryView {
-                        id: category_id,
-                        edit: false,
-                    });
+                    let _color = ui.push_style_color(StyleColor::Text, db[category_id].raw_color());
+                    if Selectable::new(&im_str!("{}", db[category_id].name))
+                        .span_all_columns(false)
+                        .build(ui)
+                    {
+                        gui_handle.goto(CategoryView {
+                            id: category_id,
+                            edit: false,
+                        });
+                    }
                 }
                 ui.same_line();
                 ui.text_colored(
@@ -74,14 +77,17 @@ impl GuiView for TagList {
         ui.separator();
         let db = gui_handle.db.read().unwrap();
         for (category_id, category) in db.categories() {
-            if Selectable::new(&im_str!("{}", category.name))
-                .span_all_columns(false)
-                .build(ui)
             {
-                gui_handle.goto(CategoryView {
-                    id: category_id,
-                    edit: false,
-                });
+                let _color = ui.push_style_color(StyleColor::Text, category.raw_color());
+                if Selectable::new(&im_str!("{}", category.name))
+                    .span_all_columns(false)
+                    .build(ui)
+                {
+                    gui_handle.goto(CategoryView {
+                        id: category_id,
+                        edit: false,
+                    });
+                }
             }
             ui.same_line();
             ui.text_colored(

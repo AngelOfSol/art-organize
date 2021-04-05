@@ -104,6 +104,12 @@ impl GuiView for PieceView {
                         gui_handle.delete_piece(self.id);
                         gui_handle.go_back();
                     }
+                    EditPieceResponse::AttachTag(attach_tag) => {
+                        gui_handle.attach_tag(attach_tag);
+                    }
+                    EditPieceResponse::RemoveTag(remove_tag) => {
+                        gui_handle.remove_tag(remove_tag);
+                    }
                 }
             }
         }

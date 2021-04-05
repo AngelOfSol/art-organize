@@ -1,6 +1,6 @@
 use db::{
     commands::{AttachCategory, EditTag},
-    Category, Db, Tag, TagId,
+    Db, Tag, TagId,
 };
 use imgui::{im_str, Selectable, StyleColor, Ui};
 
@@ -98,7 +98,6 @@ pub fn edit(tag_id: TagId, db: &Db, ui: &Ui<'_>) -> EditTagResponse {
 
 pub enum ItemViewResponse {
     None,
-    Info,
     Add,
     AddNegated,
     Open,
@@ -107,36 +106,58 @@ pub enum ItemViewResponse {
 pub fn item_view(ui: &Ui, db: &Db, tag_id: TagId) -> ItemViewResponse {
     let tag = &db[tag_id];
 
-    let button_size = [ui.text_line_height_with_spacing(); 2];
+    let button_size = [
+        ui.calc_text_size(&im_str!("+"))[0],
+        ui.text_line_height_with_spacing(),
+    ];
     let label = im_str!("{}", tag.name);
     let _id = ui.push_id(&label);
 
-    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
-        return ItemViewResponse::Info;
-    }
     if Selectable::new(im_str!("+")).size(button_size).build(ui) {
         return ItemViewResponse::Add;
     }
+    if ui.is_item_hovered() {
+        ui.tooltip_text(&im_str!("Unimplemented."));
+    }
+    ui.same_line();
     if Selectable::new(im_str!("!")).size(button_size).build(ui) {
         return ItemViewResponse::AddNegated;
     }
-
-    let color = if let Some(category_id) = db.category_for_tag(tag_id) {
-        db[category_id].raw_color()
-    } else {
-        ui.style_color(StyleColor::Text)
-    };
-    let _color = ui.push_style_color(StyleColor::Text, color);
-    if Selectable::new(&label).build(ui) {
-        ItemViewResponse::Open
-    } else {
-        ItemViewResponse::None
+    if ui.is_item_hovered() {
+        ui.tooltip_text(&im_str!("Unimplemented."));
     }
+    ui.same_line();
+    let result = {
+        let color = if let Some(category_id) = db.category_for_tag(tag_id) {
+            db[category_id].raw_color()
+        } else {
+            ui.style_color(StyleColor::Text)
+        };
+        let _color = ui.push_style_color(StyleColor::Text, color);
+        if Selectable::new(&label)
+            .size([0.0, ui.text_line_height_with_spacing()])
+            .build(ui)
+        {
+            ItemViewResponse::Open
+        } else {
+            ItemViewResponse::None
+        }
+    };
+    if ui.is_item_hovered() && tag.description.chars().any(|c| !c.is_whitespace()) {
+        ui.tooltip(|| ui.text(&im_str!("{}", tag.description)));
+    }
+
+    ui.same_line();
+    ui.text_colored(
+        [0.4, 0.4, 0.4, 1.0],
+        &im_str!("{}", db.pieces_for_tag(tag_id).count()),
+    );
+
+    result
 }
 
 pub enum InPieceViewResponse {
     None,
-    Info,
     Open,
     Remove,
 }
@@ -146,24 +167,29 @@ pub fn in_piece_view(ui: &Ui, db: &Db, tag_id: TagId) -> InPieceViewResponse {
     let button_size = [ui.text_line_height_with_spacing(); 2];
     let label = im_str!("{}", tag.name);
     let _id = ui.push_id(&label);
-
-    if Selectable::new(im_str!("?")).size(button_size).build(ui) {
-        return InPieceViewResponse::Info;
-    }
-
     if Selectable::new(im_str!("-")).size(button_size).build(ui) {
         return InPieceViewResponse::Remove;
     }
+    ui.same_line();
 
     let color = if let Some(category_id) = db.category_for_tag(tag_id) {
         db[category_id].raw_color()
     } else {
         ui.style_color(StyleColor::Text)
     };
-    let _color = ui.push_style_color(StyleColor::Text, color);
-    if Selectable::new(&label).build(ui) {
-        InPieceViewResponse::Open
-    } else {
-        InPieceViewResponse::None
+
+    let result = {
+        let _color = ui.push_style_color(StyleColor::Text, color);
+        if Selectable::new(&label).build(ui) {
+            InPieceViewResponse::Open
+        } else {
+            InPieceViewResponse::None
+        }
+    };
+
+    if ui.is_item_hovered() && tag.description.chars().any(|c| !c.is_whitespace()) {
+        ui.tooltip(|| ui.text(&im_str!("{}", tag.description)));
     }
+
+    result
 }

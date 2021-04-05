@@ -6,7 +6,7 @@ use std::{
 };
 
 use db::{
-    commands::{AttachBlob, AttachCategory, EditBlob, EditCategory, EditPiece, EditTag},
+    commands::{AttachBlob, AttachCategory, AttachTag, EditBlob, EditCategory, EditPiece, EditTag},
     BlobId, BlobType, Category, CategoryId, Db, Piece, PieceId, Tag, TagId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
@@ -145,6 +145,16 @@ impl DbHandle {
             .send(AppAction::Db(DbAction::AttachCategory(attach)))
             .unwrap();
     }
+    pub fn attach_tag(&self, attach: AttachTag) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::AttachTag(attach)))
+            .unwrap();
+    }
+    pub fn remove_tag(&self, remove: AttachTag) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::RemoveTag(remove)))
+            .unwrap();
+    }
 
     pub fn ask_blobs_for_piece(&self, to: PieceId, blob_type: BlobType) {
         self.outgoing
@@ -191,6 +201,8 @@ pub enum DbAction {
     DeleteTag(TagId),
     DeleteCategory(CategoryId),
     AttachCategory(AttachCategory),
+    AttachTag(AttachTag),
+    RemoveTag(AttachTag),
     AskBlobs {
         to: PieceId,
         blob_type: BlobType,
@@ -433,6 +445,12 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     }
                     DbAction::AttachCategory(attach) => {
                         assert!(db.attach_category(attach));
+                    }
+                    DbAction::AttachTag(attach) => {
+                        assert!(db.attach_tag(attach));
+                    }
+                    DbAction::RemoveTag(remove) => {
+                        assert!(db.remove_tag(remove));
                     }
                     DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } | DbAction::CleanBlobs => {
                         unreachable!()

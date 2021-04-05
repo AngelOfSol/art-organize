@@ -1,6 +1,7 @@
 use db::BlobType;
+use tag::ItemViewResponse;
 
-use super::{piece::PieceView, GuiHandle, GuiView};
+use super::{piece::PieceView, tag::TagView, GuiHandle, GuiView};
 use crate::app::widgets::*;
 
 #[derive(Debug)]
@@ -26,7 +27,7 @@ impl GuiView for Gallery {
 
         if let Some(id) = gallery::render(ui, blobs, &gui_handle, &gui_state.thumbnails, |blob| {
             let piece_id = db.pieces_for_blob(blob).next().unwrap();
-            piece::view(piece_id, &db, ui);
+            piece::tooltip(piece_id, &db, ui);
         }) {
             gui_handle.goto(PieceView {
                 id: db.pieces_for_blob(id).next().unwrap(),
@@ -35,22 +36,29 @@ impl GuiView for Gallery {
         }
     }
 
-    fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, _: &imgui::Ui<'_>) {
-        // for i in 0..10u32 {
-        //     let t = Tag {
-        //         name: format!("tag_{}", i),
-        //         description: format!("My test description {}", i),
-        //         added: Local::today().naive_local(),
-        //         links: Vec::new(),
-        //     };
-        //     let tg = Category {
-        //         name: format!("category_{}", i),
-        //         color: [(i * 128 / 10 + 120) as u8, 0, 0, 255],
-        //         added: Local::today().naive_local(),
-        //         ..Category::default()
-        //     };
-
-        //     tag::gallery(ui, &t, &tg);
-        // }
+    fn draw_explorer(
+        &mut self,
+        gui_handle: &GuiHandle,
+        _: &super::InnerGuiState,
+        ui: &imgui::Ui<'_>,
+    ) {
+        let db = gui_handle.db.read().unwrap();
+        let mut tag_list = db.tags().collect::<Vec<_>>();
+        tag_list.sort_by_key(|(id, _)| db.pieces_for_tag(*id).count());
+        let mut tag_list = tag_list.into_iter().take(20).collect::<Vec<_>>();
+        tag_list.sort_by_key(|(_, tag)| &tag.name);
+        for (tag_id, _) in tag_list {
+            match tag::item_view(ui, &db, tag_id) {
+                ItemViewResponse::None => {}
+                ItemViewResponse::Add => {}
+                ItemViewResponse::AddNegated => {}
+                ItemViewResponse::Open => {
+                    gui_handle.goto(TagView {
+                        id: tag_id,
+                        edit: false,
+                    });
+                }
+            }
+        }
     }
 }
