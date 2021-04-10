@@ -12,12 +12,13 @@ use crate::{
 
 use super::blob;
 
-pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId)>(
+pub fn render<'a, I: Iterator<Item = BlobId>, T: Fn(BlobId), L: Fn(BlobId) -> &'a str>(
     ui: &Ui,
     blobs: I,
     gui_handle: &GuiHandle,
     thumbnails: &BTreeMap<BlobId, TextureImage>,
-    tooltip: F,
+    loading: L,
+    tooltip: T,
 ) -> Option<BlobId> {
     let mut ret = None;
 
@@ -41,12 +42,10 @@ pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId)>(
                 .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
                 .draw_background(false)
                 .build(ui, || {
-                    let db = gui_handle.read().unwrap();
                     ui.set_cursor_pos(
                         (Vec2::from(ui.cursor_pos()) + Vec2::splat(IMAGE_BUFFER) / 2.0).into(),
                     );
-                    if ui.button_with_size(&im_str!("{}", db[blob].file_name), [THUMBNAIL_SIZE; 2])
-                    {
+                    if ui.button_with_size(&im_str!("{}", loading(blob)), [THUMBNAIL_SIZE; 2]) {
                         ret = Some(blob);
                     }
                     if ui.is_item_visible() {

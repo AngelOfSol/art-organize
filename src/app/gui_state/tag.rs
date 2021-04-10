@@ -29,11 +29,14 @@ impl GuiView for TagView {
             .pieces_for_tag(self.id)
             .filter_map(|piece_id| db.primary_blob_for_piece(piece_id));
 
-        if let Some(blob_id) =
-            gallery::render(ui, blob_ids, gui_handle, &gui_state.thumbnails, |blob_id| {
-                piece::tooltip(db.pieces_for_blob(blob_id).next().unwrap(), &db, ui)
-            })
-        {
+        if let Some(blob_id) = gallery::render(
+            ui,
+            blob_ids,
+            gui_handle,
+            &gui_state.thumbnails,
+            |blob_id| &db[db.pieces_for_blob(blob_id).next().unwrap()].name,
+            |blob_id| piece::tooltip(db.pieces_for_blob(blob_id).next().unwrap(), &db, ui),
+        ) {
             let piece_id = db.pieces_for_blob(blob_id).next().unwrap();
             gui_handle.goto(PieceView {
                 id: piece_id,
