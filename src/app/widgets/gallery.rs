@@ -41,10 +41,12 @@ pub fn render<I: Iterator<Item = BlobId>, F: Fn(BlobId)>(
                 .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
                 .draw_background(false)
                 .build(ui, || {
+                    let db = gui_handle.read().unwrap();
                     ui.set_cursor_pos(
                         (Vec2::from(ui.cursor_pos()) + Vec2::splat(IMAGE_BUFFER) / 2.0).into(),
                     );
-                    if ui.button_with_size(im_str!("Loading..."), [THUMBNAIL_SIZE; 2]) {
+                    if ui.button_with_size(&im_str!("{}", db[blob].file_name), [THUMBNAIL_SIZE; 2])
+                    {
                         ret = Some(blob);
                     }
                     if ui.is_item_visible() {

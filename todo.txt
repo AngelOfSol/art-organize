@@ -83,9 +83,10 @@ categories have:
 - implement categories
 - implement adding tags
 - category colors
+- handle PSD/CLIP files properly
+    - replace "Loading..." with the filename?
 
 v0.2 milestone
-- handle PSD/CLIP files properly 
 - ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
     - yumi commissions
     - miu commissions
