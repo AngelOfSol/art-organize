@@ -1,6 +1,6 @@
 use db::{
     commands::{AttachTag, EditPiece},
-    CategoryId, Db, Piece, PieceId,
+    CategoryId, Db, Piece, PieceId, TagId,
 };
 use imgui::{im_str, Ui};
 use tag::ItemViewResponse;
@@ -40,7 +40,11 @@ pub fn tooltip(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     }
 }
 
-pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
+pub fn view_with_tags(
+    piece_id: PieceId,
+    db: &Db,
+    ui: &Ui<'_>,
+) -> Option<(TagId, ItemViewResponse)> {
     view(piece_id, db, ui);
 
     ui.separator();
@@ -65,9 +69,7 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
         for tag_id in tags {
             match tag::item_view(ui, db, tag_id) {
                 ItemViewResponse::None => {}
-                ItemViewResponse::Add => {}
-                ItemViewResponse::AddNegated => {}
-                ItemViewResponse::Open => {}
+                response => return Some((tag_id, response)),
             }
         }
         ui.spacing();
@@ -84,11 +86,10 @@ pub fn view_with_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     for tag_id in tags {
         match tag::item_view(ui, db, tag_id) {
             ItemViewResponse::None => {}
-            ItemViewResponse::Add => {}
-            ItemViewResponse::AddNegated => {}
-            ItemViewResponse::Open => {}
+            response => return Some((tag_id, response)),
         }
     }
+    None
 }
 
 pub enum EditPieceResponse {
@@ -97,6 +98,7 @@ pub enum EditPieceResponse {
     Delete,
     AttachTag(AttachTag),
     RemoveTag(AttachTag),
+    OpenTag(TagId),
 }
 
 pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
@@ -230,7 +232,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         for tag_id in tags {
             match tag::in_piece_view(ui, db, tag_id) {
                 InPieceViewResponse::None => (),
-                InPieceViewResponse::Open => (),
+                InPieceViewResponse::Open => return EditPieceResponse::OpenTag(tag_id),
                 InPieceViewResponse::Remove => {
                     return EditPieceResponse::RemoveTag(AttachTag {
                         src: piece_id,
@@ -256,7 +258,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
     for tag_id in tags {
         match tag::in_piece_view(ui, db, tag_id) {
             InPieceViewResponse::None => (),
-            InPieceViewResponse::Open => (),
+            InPieceViewResponse::Open => return EditPieceResponse::OpenTag(tag_id),
             InPieceViewResponse::Remove => {
                 return EditPieceResponse::RemoveTag(AttachTag {
                     src: piece_id,

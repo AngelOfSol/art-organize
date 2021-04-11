@@ -1,4 +1,4 @@
-use super::{blob::BlobView, GuiView};
+use super::{blob::BlobView, tag::TagView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
@@ -94,7 +94,19 @@ impl GuiView for PieceView {
                 self.edit = !self.edit;
             }
             if !self.edit {
-                piece::view_with_tags(self.id, &db, ui);
+                if let Some((tag_id, response)) = piece::view_with_tags(self.id, &db, ui) {
+                    match response {
+                        tag::ItemViewResponse::None => unreachable!(),
+                        tag::ItemViewResponse::Add => {}
+                        tag::ItemViewResponse::AddNegated => {}
+                        tag::ItemViewResponse::Open => {
+                            gui_handle.goto(TagView {
+                                id: tag_id,
+                                edit: false,
+                            });
+                        }
+                    }
+                }
             } else {
                 match piece::edit(self.id, &db, ui) {
                     EditPieceResponse::None => {}
@@ -110,6 +122,12 @@ impl GuiView for PieceView {
                     }
                     EditPieceResponse::RemoveTag(remove_tag) => {
                         gui_handle.remove_tag(remove_tag);
+                    }
+                    EditPieceResponse::OpenTag(tag_id) => {
+                        gui_handle.goto(TagView {
+                            id: tag_id,
+                            edit: false,
+                        });
                     }
                 }
             }

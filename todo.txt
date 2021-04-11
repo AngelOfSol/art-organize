@@ -104,6 +104,7 @@ x add button to add default categories
 
 
 v0.3 and beyond
+- reorganize query-ing mechanism for easier to define queries
 - implement searching
 - implement hyperlinks
 - add context menus to edit blobs in the piece screen
