@@ -50,7 +50,10 @@ impl GuiView for Gallery {
         ui: &imgui::Ui<'_>,
     ) {
         let db = gui_handle.db.read().unwrap();
-        let mut tag_list = db.tags().collect::<Vec<_>>();
+        let mut tag_list = db
+            .tags()
+            .filter(|(id, _)| db.pieces_for_tag(*id).count() > 0)
+            .collect::<Vec<_>>();
         tag_list.sort_by_key(|(id, _)| db.pieces_for_tag(*id).count());
         let mut tag_list = tag_list.into_iter().take(20).collect::<Vec<_>>();
         tag_list.sort_by_key(|(_, tag)| &tag.name);

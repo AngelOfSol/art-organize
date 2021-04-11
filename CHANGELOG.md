@@ -32,7 +32,11 @@
 * The grey numbers next to tags and categories display the counts
   * The amount of pieces with a given tag
   * The amount of tags with a given category
-* Pieces and blobs that have unloaded images will display the name of their piece or blob respectively.
+* Pieces and blobs that have unloaded images will display the name of their piece or blob respectively
+* Added a new piece list screen
+  * Lists out all the pieces and some relevant data
+  * Contains a summary of some information on the left side
+
 
 ### Backend
 * Caps FPS at ~144

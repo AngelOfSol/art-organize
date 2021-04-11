@@ -1,6 +1,8 @@
 use imgui::im_str;
 
-use super::{gallery::Gallery, help::Help, tag_list::TagList, GuiHandle, GuiView};
+use super::{
+    gallery::Gallery, help::Help, piece_list::PieceList, tag_list::TagList, GuiHandle, GuiView,
+};
 
 #[derive(Debug)]
 pub struct Home;
@@ -15,6 +17,9 @@ impl GuiView for Home {
         }
         if ui.button(im_str!("Tags")) {
             gui_handle.goto(TagList);
+        }
+        if ui.button(im_str!("Pieces")) {
+            gui_handle.goto(PieceList);
         }
         if ui.button(im_str!("Help")) {
             gui_handle.goto(Help);
