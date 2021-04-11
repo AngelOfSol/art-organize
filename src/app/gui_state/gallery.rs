@@ -55,7 +55,8 @@ impl GuiView for Gallery {
             .filter(|(id, _)| db.pieces_for_tag(*id).count() > 0)
             .collect::<Vec<_>>();
         tag_list.sort_by_key(|(id, _)| db.pieces_for_tag(*id).count());
-        let mut tag_list = tag_list.into_iter().take(20).collect::<Vec<_>>();
+        // tag_list is sorted ascending, and we want the greatest 20, not the least 20
+        let mut tag_list = tag_list.into_iter().rev().take(20).collect::<Vec<_>>();
         tag_list.sort_by_key(|(_, tag)| &tag.name);
         for (tag_id, _) in tag_list {
             match tag::item_view(ui, &db, tag_id) {

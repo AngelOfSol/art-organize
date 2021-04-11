@@ -24,6 +24,7 @@
   * Date Added
   * Color
 * Adds the ability to add/remove tags to/from pieces
+  * Adding and removing tags is grouped by categories for convenience
 * Tags with an associated category will be colored according to the categories color
 * Tags are generally sorted by category and then by tag name (alphabetically in both cases)
 * When viewing a tag, pieces with that tag will be displayed in the main window

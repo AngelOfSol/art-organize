@@ -1,6 +1,6 @@
 use db::{
     commands::{AttachTag, EditPiece},
-    Db, Piece, PieceId,
+    CategoryId, Db, Piece, PieceId,
 };
 use imgui::{im_str, Ui};
 use tag::ItemViewResponse;
@@ -212,43 +212,15 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
 
     ui.separator();
 
-    let mut unused_tags = db
-        .tags()
-        .filter(|(tag_id, _)| {
-            !db.tags_for_piece(piece_id)
-                .any(|piece_tag_id| piece_tag_id == *tag_id)
-        })
-        .collect::<Vec<_>>();
-    unused_tags.sort_by_key(|(_, tag)| &tag.name);
-
-    if !unused_tags.is_empty() {
-        let (first_tag, _) = unused_tags[0];
-
-        if let Some(tag_id) = super::combo_box(
-            ui,
-            &im_str!("Add"),
-            unused_tags.into_iter().map(|(id, _)| id),
-            &first_tag,
-            |id| im_str!("{}", db[id].name),
-        ) {
-            return EditPieceResponse::AttachTag(AttachTag {
-                src: piece_id,
-                dest: tag_id,
-            });
-        }
-    }
-
-    let mut categories = db
-        .tags_for_piece(piece_id)
-        .map(|tag| db.category_for_tag(tag))
-        .flatten()
-        .collect::<Vec<_>>();
+    let mut categories = db.categories().map(|(id, _)| id).collect::<Vec<_>>();
     categories.sort();
     categories.dedup();
     categories.sort_by_key(|category_id| &db[category_id].name);
 
     for category_id in categories {
+        let _id = ui.push_id(&im_str!("{}", category_id));
         ui.text(&im_str!("{}", db[category_id].name));
+
         let mut tags = db
             .tags_for_piece(piece_id)
             .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
@@ -267,6 +239,11 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
                 }
             }
         }
+
+        if let Some(value) = add_tag_widget(db, piece_id, Some(category_id), ui) {
+            return value;
+        }
+
         ui.spacing();
     }
     ui.text(&im_str!("tag"));
@@ -289,9 +266,47 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         }
     }
 
+    if let Some(value) = add_tag_widget(db, piece_id, None, ui) {
+        return value;
+    }
+
     if confirm_delete_popup(ui) {
         EditPieceResponse::Delete
     } else {
         EditPieceResponse::None
     }
+}
+
+fn add_tag_widget(
+    db: &Db,
+    piece_id: PieceId,
+    category_id: Option<CategoryId>,
+    ui: &Ui,
+) -> Option<EditPieceResponse> {
+    let mut unused_tags = db
+        .tags()
+        .filter(|(tag_id, _)| {
+            !db.tags_for_piece(piece_id)
+                .any(|piece_tag_id| piece_tag_id == *tag_id)
+                && db.category_for_tag(*tag_id) == category_id
+        })
+        .collect::<Vec<_>>();
+    unused_tags.sort_by_key(|(_, tag)| &tag.name);
+    if !unused_tags.is_empty() {
+        let (first_tag, _) = unused_tags[0];
+
+        if let Some(tag_id) = super::combo_box(
+            ui,
+            &im_str!("Add"),
+            unused_tags.into_iter().map(|(id, _)| id),
+            &first_tag,
+            |id| im_str!("{}", db[id].name),
+        ) {
+            return Some(EditPieceResponse::AttachTag(AttachTag {
+                src: piece_id,
+                dest: tag_id,
+            }));
+        }
+    }
+    None
 }
