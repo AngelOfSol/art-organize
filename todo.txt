@@ -87,6 +87,9 @@ categories have:
     - replace "Loading..." with the filename?
 - ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
     - undownloaded skeb commissions
+- open tags from piece page
+x add button to add default categories
+    - instead make the add tag button separate for each category
 
 v0.2 milestone
 - ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
@@ -95,15 +98,13 @@ v0.2 milestone
     x emotes (emotes will be a separate folder)
     - update date and price for all items 
 - link category in tag to category page
-- open tags from piece page
-x add button to add default categories
-    - instead make the add tag button separate for each category
 - save image to file
 - clipboard for images AND text
 
 
 
 v0.3 and beyond
+- try something different for confirming editing.
 - reorganize query-ing mechanism for easier to define queries
 - implement searching
 - implement hyperlinks
@@ -111,6 +112,7 @@ v0.3 and beyond
 - add a statistics screen
     - allow it to take a search to filter data
 - add a settings screen
+- switch to tables api
 - allow user to add contextual shell commands via the settings screen
 - add config/settings info to allow user to change style
 - think about removing media type?

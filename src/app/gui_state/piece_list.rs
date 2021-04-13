@@ -84,7 +84,28 @@ impl GuiView for PieceList {
         let total_spent = base_spent + tip_spent;
         ui.text(&im_str!("Price Total: ${}", base_spent));
         ui.text(&im_str!("Tips: ${}", tip_spent));
-        ui.text(&im_str!("Total: ${}", total_spent));
-        ui.text(&im_str!("Average Tip: {}%", tip_spent * 100 / total_spent));
+        ui.text(&im_str!("Total Spent: ${}", total_spent));
+        ui.text(&im_str!(
+            "Tip Percentage: {}%",
+            tip_spent * 100 / total_spent
+        ));
+
+        let avg_price = db
+            .pieces()
+            .filter_map(|(_, piece)| piece.base_price)
+            .sum::<i64>()
+            / db.pieces().count() as i64;
+        ui.text(&im_str!("Average Price: ${}", avg_price));
+
+        let avg_tip = db
+            .pieces()
+            .filter_map(|(_, piece)| piece.tip_price)
+            .sum::<i64>()
+            / db.pieces().count() as i64;
+        ui.text(&im_str!("Average Tip: ${}", avg_tip));
+
+        ui.separator();
+        ui.text(&im_str!("Piece Count: {}", db.pieces().count()));
+        ui.text(&im_str!("Blob Count: {}", db.blobs().count()));
     }
 }

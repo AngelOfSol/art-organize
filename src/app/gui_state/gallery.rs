@@ -17,7 +17,10 @@ impl GuiView for Gallery {
     ) {
         let db = gui_handle.db.read().unwrap();
 
-        let blobs = db.pieces().filter_map(|(id, _)| {
+        let mut pieces_sorted = db.pieces().collect::<Vec<_>>();
+        pieces_sorted.sort_by_key(|(_, piece)| piece.added);
+
+        let blobs = pieces_sorted.into_iter().rev().filter_map(|(id, _)| {
             let mut blobs = db.blobs_for_piece(id);
             blobs
                 .clone()
