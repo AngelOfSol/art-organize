@@ -37,6 +37,7 @@
 * Added a new piece list screen
   * Lists out all the pieces and some relevant data
   * Contains a summary of some information on the left side
+* Clipboard now works for text
 
 
 ### Backend

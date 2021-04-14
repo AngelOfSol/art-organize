@@ -252,35 +252,40 @@ async fn gui_actor(
                 let outgoing_images = outgoing_images.clone();
                 let db = db.clone();
                 let gui_state = gui_state.clone();
-                tokio::task::spawn_blocking(move || {
-                    let read = db.read().unwrap();
 
-                    let hash = read[blob_id].hash;
-                    {
-                        let mut gui_state = gui_state.write().unwrap();
-                        if gui_state.inner.requested.contains(&blob_id) {
-                            return;
-                        }
-                        gui_state.inner.requested.insert(blob_id);
-                    }
+                let check_req = gui_state.read().unwrap();
+                if !check_req.requested.contains(&blob_id) {
+                    drop(check_req);
+                    tokio::task::spawn_blocking(move || {
+                        let read = db.read().unwrap();
 
-                    let storage = read.storage_for(blob_id);
-
-                    let gui_state = gui_state.clone();
-
-                    let test = RawImage::make(storage, hash);
-
-                    match test {
-                        Ok((raw, thumb)) => {
-                            outgoing_images.send((blob_id, thumb, true)).unwrap();
-                            outgoing_images.send((blob_id, raw, false)).unwrap();
-                        }
-                        Err(_) => {
+                        let hash = read[blob_id].hash;
+                        {
                             let mut gui_state = gui_state.write().unwrap();
-                            gui_state.inner.requested.remove(&blob_id);
+                            if gui_state.inner.requested.contains(&blob_id) {
+                                return;
+                            }
+                            gui_state.inner.requested.insert(blob_id);
                         }
-                    }
-                });
+
+                        let storage = read.storage_for(blob_id);
+
+                        let gui_state = gui_state.clone();
+
+                        let test = RawImage::make(storage, hash);
+
+                        match test {
+                            Ok((raw, thumb)) => {
+                                outgoing_images.send((blob_id, thumb, true)).unwrap();
+                                outgoing_images.send((blob_id, raw, false)).unwrap();
+                            }
+                            Err(_) => {
+                                let mut gui_state = gui_state.write().unwrap();
+                                gui_state.inner.requested.remove(&blob_id);
+                            }
+                        }
+                    });
+                }
             }
 
             GuiAction::ImageCreated {

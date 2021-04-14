@@ -87,19 +87,28 @@ categories have:
     - replace "Loading..." with the filename?
 - ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
     - undownloaded skeb commissions
+    - vermillion dice
+    - chou
+    - sunnypoppy
+    - 46snowy
 - open tags from piece page
 x add button to add default categories
     - instead make the add tag button separate for each category
-
-v0.2 milestone
-- ADD ALL MY MEDIA TO THIS AND MOVE IT INTO MY BACKED UP FOLDER
     - yumi commissions
     - miu commissions
-    x emotes (emotes will be a separate folder)
-    - update date and price for all items 
+    - emotes (grouped in a single piece)
+- clipboard for images AND text
+    - text
+
+v0.2 milestone
 - link category in tag to category page
 - save image to file
 - clipboard for images AND text
+    - images
+- optimize to only load thumbnails, and load bigger images on demand
+- change to using iter tools wherever possible
+    - specifically the sorted by
+
 
 
 

@@ -41,8 +41,7 @@ impl App {
             };
 
             self.gui_handle.forward_image(blob_id, image, is_thumbnail);
-        }
-        {
+        } else {
             let mut gui_state = self.gui_state.write().unwrap();
             let db = self.gui_handle.read().unwrap();
             let invalid = gui_state

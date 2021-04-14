@@ -4,6 +4,7 @@
 use std::{
     path::PathBuf,
     sync::{mpsc, Arc, RwLock},
+    time::Duration,
 };
 
 use anyhow::bail;
@@ -34,7 +35,12 @@ mod undo;
 mod updater;
 
 fn main() -> anyhow::Result<()> {
-    let runtime = Builder::new_multi_thread().enable_all().build()?;
+    let runtime = Builder::new_multi_thread()
+        .worker_threads(4)
+        .max_blocking_threads(12)
+        .thread_keep_alive(Duration::from_secs(1))
+        .enable_all()
+        .build()?;
 
     runtime.block_on(async_main())
 }

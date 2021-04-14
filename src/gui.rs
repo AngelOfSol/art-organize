@@ -1,4 +1,5 @@
 use crate::{app::App, raw_image::RawImage, style::modify_style};
+
 use imgui::*;
 use imgui_wgpu::{Renderer, RendererConfig, Texture, TextureConfig};
 use imgui_winit_support::WinitPlatform;
@@ -98,6 +99,19 @@ pub fn run_event_loop(
     });
 }
 
+struct Clipboard;
+
+impl ClipboardBackend for Clipboard {
+    fn get(&mut self) -> Option<ImString> {
+        clipboard_win::get_clipboard_string().ok().map(|x| x.into())
+    }
+
+    fn set(&mut self, value: &ImStr) {
+        // TODO log failures
+        let _ = clipboard_win::set_clipboard_string(value.to_str());
+    }
+}
+
 impl GuiContext {
     pub async fn create(event_loop: &EventLoop<()>) -> anyhow::Result<Self> {
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -170,6 +184,8 @@ impl GuiContext {
                 ..Default::default()
             }),
         }]);
+
+        imgui.set_clipboard_backend(Box::new(Clipboard));
 
         modify_style(imgui.style_mut());
 
