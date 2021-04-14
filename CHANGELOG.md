@@ -38,7 +38,7 @@
   * Lists out all the pieces and some relevant data
   * Contains a summary of some information on the left side
 * Clipboard now works for text
-
+* When loading images, thumbnails and raw images will be requested separately
 
 ### Backend
 * Caps FPS at ~144

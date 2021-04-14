@@ -82,14 +82,15 @@ pub struct InnerGuiState {
     pub thumbnails: BTreeMap<BlobId, TextureImage>,
     pub images: BTreeMap<BlobId, TextureImage>,
 
-    pub requested: BTreeSet<BlobId>,
+    pub requested: BTreeSet<(BlobId, bool)>,
 }
 
 impl InnerGuiState {
     pub fn invalidate(&mut self, id: &BlobId) {
         self.images.remove(id);
         self.thumbnails.remove(id);
-        self.requested.remove(id);
+        self.requested.remove(&(*id, false));
+        self.requested.remove(&(*id, true));
     }
 }
 
@@ -114,7 +115,7 @@ pub struct SearchState {
 
 #[derive(Debug)]
 pub enum GuiAction {
-    RequestImage(BlobId),
+    RequestImage(BlobId, bool),
     ImageCreated {
         blob_id: BlobId,
         image: TextureImage,
@@ -166,9 +167,14 @@ impl GuiActionHandle {
         self.outgoing.send(GuiAction::NewCategory).unwrap();
     }
 
-    pub fn request_load_image(&self, blob_id: BlobId) {
+    pub fn request_load_image_borked(&self, blob_id: BlobId) {
         self.outgoing
-            .send(GuiAction::RequestImage(blob_id))
+            .send(GuiAction::RequestImage(blob_id, false))
+            .unwrap();
+    }
+    pub fn request_load_thumbnail(&self, blob_id: BlobId) {
+        self.outgoing
+            .send(GuiAction::RequestImage(blob_id, true))
             .unwrap();
     }
 
@@ -248,13 +254,13 @@ async fn gui_actor(
                     .view_stack
                     .push(Box::new(CategoryView { id, edit: true }));
             }
-            GuiAction::RequestImage(blob_id) => {
+            GuiAction::RequestImage(blob_id, thumbnail) => {
                 let outgoing_images = outgoing_images.clone();
                 let db = db.clone();
                 let gui_state = gui_state.clone();
 
                 let check_req = gui_state.read().unwrap();
-                if !check_req.requested.contains(&blob_id) {
+                if !check_req.requested.contains(&(blob_id, thumbnail)) {
                     drop(check_req);
                     tokio::task::spawn_blocking(move || {
                         let read = db.read().unwrap();
@@ -262,10 +268,10 @@ async fn gui_actor(
                         let hash = read[blob_id].hash;
                         {
                             let mut gui_state = gui_state.write().unwrap();
-                            if gui_state.inner.requested.contains(&blob_id) {
+                            if gui_state.inner.requested.contains(&(blob_id, thumbnail)) {
                                 return;
                             }
-                            gui_state.inner.requested.insert(blob_id);
+                            gui_state.inner.requested.insert((blob_id, thumbnail));
                         }
 
                         let storage = read.storage_for(blob_id);
@@ -276,12 +282,15 @@ async fn gui_actor(
 
                         match test {
                             Ok((raw, thumb)) => {
-                                outgoing_images.send((blob_id, thumb, true)).unwrap();
-                                outgoing_images.send((blob_id, raw, false)).unwrap();
+                                if thumbnail {
+                                    outgoing_images.send((blob_id, thumb, true)).unwrap();
+                                } else {
+                                    outgoing_images.send((blob_id, raw, false)).unwrap();
+                                }
                             }
                             Err(_) => {
                                 let mut gui_state = gui_state.write().unwrap();
-                                gui_state.inner.requested.remove(&blob_id);
+                                gui_state.inner.requested.remove(&(blob_id, thumbnail));
                             }
                         }
                     });

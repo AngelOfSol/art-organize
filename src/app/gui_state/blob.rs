@@ -42,7 +42,7 @@ impl GuiView for BlobView {
 
             imgui::Image::new(image.data, size).build(ui);
         } else {
-            gui_handle.request_load_image(self.id);
+            gui_handle.request_load_image_borked(self.id);
         }
     }
 

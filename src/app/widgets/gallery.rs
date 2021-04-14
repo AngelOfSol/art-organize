@@ -49,7 +49,7 @@ pub fn render<'a, I: Iterator<Item = BlobId>, T: Fn(BlobId), L: Fn(BlobId) -> &'
                         ret = Some(blob);
                     }
                     if ui.is_item_visible() {
-                        gui_handle.request_load_image(blob);
+                        gui_handle.request_load_thumbnail(blob);
                     }
                     if ui.is_item_hovered() {
                         ui.tooltip(|| {
