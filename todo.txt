@@ -99,13 +99,13 @@ x add button to add default categories
     - emotes (grouped in a single piece)
 - clipboard for images AND text
     - text
+- optimize to only load thumbnails, and load bigger images on demand
 
 v0.2 milestone
 - link category in tag to category page
 - save image to file
 - clipboard for images AND text
     - images
-- optimize to only load thumbnails, and load bigger images on demand
 - change to using iter tools wherever possible
     - specifically the sorted by
 

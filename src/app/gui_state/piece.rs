@@ -90,11 +90,13 @@ impl GuiView for PieceView {
     ) {
         let db = gui_handle.db.read().unwrap();
         if db.exists(self.id) {
-            if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
-                self.edit = !self.edit;
-            }
             if !self.edit {
-                if let Some((tag_id, response)) = piece::view_with_tags(self.id, &db, ui) {
+                piece::view(self.id, &db, ui);
+
+                self.edit = ui.button(im_str!("Edit"));
+
+                ui.separator();
+                if let Some((tag_id, response)) = piece::view_tags(self.id, &db, ui) {
                     match response {
                         tag::ItemViewResponse::None => unreachable!(),
                         tag::ItemViewResponse::Add => {}
@@ -108,26 +110,32 @@ impl GuiView for PieceView {
                     }
                 }
             } else {
-                match piece::edit(self.id, &db, ui) {
-                    EditPieceResponse::None => {}
-                    EditPieceResponse::Edit(edit) => {
-                        gui_handle.update_piece(edit);
-                    }
-                    EditPieceResponse::Delete => {
-                        gui_handle.delete_piece(self.id);
-                        gui_handle.go_back();
-                    }
-                    EditPieceResponse::AttachTag(attach_tag) => {
-                        gui_handle.attach_tag(attach_tag);
-                    }
-                    EditPieceResponse::RemoveTag(remove_tag) => {
-                        gui_handle.remove_tag(remove_tag);
-                    }
-                    EditPieceResponse::OpenTag(tag_id) => {
-                        gui_handle.goto(TagView {
-                            id: tag_id,
-                            edit: false,
-                        });
+                let piece_edit = piece::edit(self.id, &db, ui);
+
+                self.edit = !ui.button(im_str!("View"));
+                ui.separator();
+                let tag_edit = piece::edit_tags(self.id, &db, ui);
+                if let Some(action) = piece_edit.or(tag_edit) {
+                    match action {
+                        EditPieceResponse::Edit(edit) => {
+                            gui_handle.update_piece(edit);
+                        }
+                        EditPieceResponse::Delete => {
+                            gui_handle.delete_piece(self.id);
+                            gui_handle.go_back();
+                        }
+                        EditPieceResponse::AttachTag(attach_tag) => {
+                            gui_handle.attach_tag(attach_tag);
+                        }
+                        EditPieceResponse::RemoveTag(remove_tag) => {
+                            gui_handle.remove_tag(remove_tag);
+                        }
+                        EditPieceResponse::OpenTag(tag_id) => {
+                            gui_handle.goto(TagView {
+                                id: tag_id,
+                                edit: false,
+                            });
+                        }
                     }
                 }
             }

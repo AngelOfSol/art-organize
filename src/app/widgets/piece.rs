@@ -39,16 +39,7 @@ pub fn tooltip(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
         ui.text(im_str!("Tipped: ${}", price));
     }
 }
-
-pub fn view_with_tags(
-    piece_id: PieceId,
-    db: &Db,
-    ui: &Ui<'_>,
-) -> Option<(TagId, ItemViewResponse)> {
-    view(piece_id, db, ui);
-
-    ui.separator();
-
+pub fn view_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<(TagId, ItemViewResponse)> {
     let mut categories = db
         .tags_for_piece(piece_id)
         .map(|tag| db.category_for_tag(tag))
@@ -93,7 +84,6 @@ pub fn view_with_tags(
 }
 
 pub enum EditPieceResponse {
-    None,
     Edit(EditPiece),
     Delete,
     AttachTag(AttachTag),
@@ -101,118 +91,9 @@ pub enum EditPieceResponse {
     OpenTag(TagId),
 }
 
-pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
-    let piece = &db[piece_id];
-
-    let mut buf = piece.name.clone().into();
-    ui.input_text(im_str!("Name"), &mut buf)
-        .resize_buffer(true)
-        .build();
-
-    if ui.is_item_deactivated_after_edit() {
-        return EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                name: buf.to_string(),
-                ..piece.clone()
-            },
-        });
-    }
-
-    if let Some(source_type) = enum_combo_box(ui, im_str!("Source Type"), &piece.source_type) {
-        return EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                source_type,
-                ..piece.clone()
-            },
-        });
-    }
-
-    if let Some(media_type) = enum_combo_box(ui, im_str!("Media Type"), &piece.media_type) {
-        return EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                media_type,
-                ..piece.clone()
-            },
-        });
-    }
-
-    if let Some(date) = date::edit(im_str!("Date Added"), &piece.added, ui) {
-        return EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                added: date,
-                ..piece.clone()
-            },
-        });
-    }
-
-    let mut buf = piece
-        .base_price
-        .map(|price| price.to_string())
-        .unwrap_or_else(String::new)
-        .into();
-
-    ui.input_text(im_str!("Price"), &mut buf)
-        .chars_decimal(true)
-        .resize_buffer(true)
-        .build();
-    if ui.is_item_deactivated_after_edit() {
-        if buf.is_empty() {
-            return EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    base_price: None,
-                    ..piece.clone()
-                },
-            });
-        } else if let Ok(base_price) = buf.to_string().parse() {
-            return EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    base_price: Some(base_price),
-                    ..piece.clone()
-                },
-            });
-        }
-    }
-
-    let mut buf = piece
-        .tip_price
-        .map(|price| price.to_string())
-        .unwrap_or_else(String::new)
-        .into();
-    ui.input_text(im_str!("Tip"), &mut buf)
-        .chars_decimal(true)
-        .resize_buffer(true)
-        .build();
-    if ui.is_item_deactivated_after_edit() {
-        if buf.is_empty() {
-            return EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    tip_price: None,
-                    ..piece.clone()
-                },
-            });
-        } else if let Ok(tip_price) = buf.to_string().parse() {
-            return EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    tip_price: Some(tip_price),
-                    ..piece.clone()
-                },
-            });
-        }
-    }
-
-    if ui.button(im_str!("Delete")) {
-        ui.open_popup(im_str!("Confirm Delete"));
-    }
-
-    ui.separator();
+#[allow(clippy::or_fun_call)]
+pub fn edit_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse> {
+    let mut ret = None;
 
     let mut categories = db.categories().map(|(id, _)| id).collect::<Vec<_>>();
     categories.sort();
@@ -232,19 +113,19 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
         for tag_id in tags {
             match tag::in_piece_view(ui, db, tag_id) {
                 InPieceViewResponse::None => (),
-                InPieceViewResponse::Open => return EditPieceResponse::OpenTag(tag_id),
+                InPieceViewResponse::Open => {
+                    ret.get_or_insert(EditPieceResponse::OpenTag(tag_id));
+                }
                 InPieceViewResponse::Remove => {
-                    return EditPieceResponse::RemoveTag(AttachTag {
+                    ret.get_or_insert(EditPieceResponse::RemoveTag(AttachTag {
                         src: piece_id,
                         dest: tag_id,
-                    })
+                    }));
                 }
             }
         }
 
-        if let Some(value) = add_tag_widget(db, piece_id, Some(category_id), ui) {
-            return value;
-        }
+        ret = ret.or(add_tag_widget(db, piece_id, Some(category_id), ui));
 
         ui.spacing();
     }
@@ -258,25 +139,141 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> EditPieceResponse {
     for tag_id in tags {
         match tag::in_piece_view(ui, db, tag_id) {
             InPieceViewResponse::None => (),
-            InPieceViewResponse::Open => return EditPieceResponse::OpenTag(tag_id),
+            InPieceViewResponse::Open => {
+                ret.get_or_insert(EditPieceResponse::OpenTag(tag_id));
+            }
             InPieceViewResponse::Remove => {
-                return EditPieceResponse::RemoveTag(AttachTag {
+                ret.get_or_insert(EditPieceResponse::RemoveTag(AttachTag {
                     src: piece_id,
                     dest: tag_id,
-                })
+                }));
             }
         }
     }
 
-    if let Some(value) = add_tag_widget(db, piece_id, None, ui) {
-        return value;
+    ret = ret.or(add_tag_widget(db, piece_id, None, ui));
+
+    ret
+}
+
+pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse> {
+    let mut ret = None;
+
+    let piece = &db[piece_id];
+
+    let mut buf = piece.name.clone().into();
+    ui.input_text(im_str!("Name"), &mut buf)
+        .resize_buffer(true)
+        .build();
+
+    if ui.is_item_deactivated_after_edit() {
+        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+            id: piece_id,
+            data: Piece {
+                name: buf.to_string(),
+                ..piece.clone()
+            },
+        }));
+    }
+
+    if let Some(source_type) = enum_combo_box(ui, im_str!("Source Type"), &piece.source_type) {
+        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+            id: piece_id,
+            data: Piece {
+                source_type,
+                ..piece.clone()
+            },
+        }));
+    }
+
+    if let Some(media_type) = enum_combo_box(ui, im_str!("Media Type"), &piece.media_type) {
+        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+            id: piece_id,
+            data: Piece {
+                media_type,
+                ..piece.clone()
+            },
+        }));
+    }
+
+    if let Some(date) = date::edit(im_str!("Date Added"), &piece.added, ui) {
+        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+            id: piece_id,
+            data: Piece {
+                added: date,
+                ..piece.clone()
+            },
+        }));
+    }
+
+    let mut buf = piece
+        .base_price
+        .map(|price| price.to_string())
+        .unwrap_or_else(String::new)
+        .into();
+
+    ui.input_text(im_str!("Price"), &mut buf)
+        .chars_decimal(true)
+        .resize_buffer(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        if buf.is_empty() {
+            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    base_price: None,
+                    ..piece.clone()
+                },
+            }));
+        } else if let Ok(base_price) = buf.to_string().parse() {
+            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    base_price: Some(base_price),
+                    ..piece.clone()
+                },
+            }));
+        }
+    }
+
+    let mut buf = piece
+        .tip_price
+        .map(|price| price.to_string())
+        .unwrap_or_else(String::new)
+        .into();
+    ui.input_text(im_str!("Tip"), &mut buf)
+        .chars_decimal(true)
+        .resize_buffer(true)
+        .build();
+    if ui.is_item_deactivated_after_edit() {
+        if buf.is_empty() {
+            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    tip_price: None,
+                    ..piece.clone()
+                },
+            }));
+        } else if let Ok(tip_price) = buf.to_string().parse() {
+            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
+                id: piece_id,
+                data: Piece {
+                    tip_price: Some(tip_price),
+                    ..piece.clone()
+                },
+            }));
+        }
+    }
+
+    if ui.button(im_str!("Delete")) {
+        ui.open_popup(im_str!("Confirm Delete"));
     }
 
     if confirm_delete_popup(ui) {
-        EditPieceResponse::Delete
-    } else {
-        EditPieceResponse::None
+        ret.get_or_insert(EditPieceResponse::Delete);
     }
+
+    ret
 }
 
 fn add_tag_widget(

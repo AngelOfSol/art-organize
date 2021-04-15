@@ -128,6 +128,7 @@ pub enum GuiAction {
     Push(Box<dyn GuiView>),
     NewDB,
     LoadDB,
+    CopyToClipboard(BlobId),
 }
 
 #[derive(Clone)]
@@ -185,6 +186,12 @@ impl GuiActionHandle {
                 image,
                 is_thumbnail,
             })
+            .unwrap();
+    }
+
+    pub fn copy_to_clipboard(&self, blob_id: BlobId) {
+        self.outgoing
+            .send(GuiAction::CopyToClipboard(blob_id))
             .unwrap();
     }
 
@@ -331,6 +338,26 @@ async fn gui_actor(
                 let mut gui_state = gui_state.write().unwrap();
                 *gui_state = GuiState::default();
                 gui_state.view_stack.push(Box::new(Gallery));
+            }
+            GuiAction::CopyToClipboard(blob_id) => {
+                let db = db.clone();
+
+                tokio::task::spawn_blocking(move || -> anyhow::Result<()> {
+                    let db = db.read().unwrap();
+                    let storage = db.storage_for(blob_id);
+                    let image = image::DynamicImage::ImageRgb8(
+                        image::io::Reader::open(&storage)?
+                            .with_guessed_format()?
+                            .decode()?
+                            .to_rgb8(),
+                    );
+                    let mut bitmap = Vec::<u8>::new();
+
+                    image.write_to(&mut bitmap, image::ImageOutputFormat::Bmp)?;
+
+                    clipboard_win::set_clipboard(clipboard_win::formats::Bitmap, &bitmap).unwrap();
+                    Ok(())
+                });
             }
         }
     }

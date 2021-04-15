@@ -54,10 +54,6 @@ impl GuiView for BlobView {
     ) {
         let db = gui_handle.db.read().unwrap();
         if db.exists(self.id) {
-            if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
-                self.edit = !self.edit;
-            }
-
             if !self.edit {
                 blob::view(self.id, &db, ui);
             } else {
@@ -72,6 +68,19 @@ impl GuiView for BlobView {
                     }
                 };
             }
+            ui.separator();
+            if ui.button(&im_str!("{}", if self.edit { "View" } else { "Edit" })) {
+                self.edit = !self.edit;
+            }
+
+            ui.same_line();
+            if ui.button(im_str!("Copy to Clipboard")) {
+                gui_handle.copy_to_clipboard(self.id);
+                //
+            }
+            ui.same_line();
+            // copy to clipboard
+            // save to file
         }
     }
 }

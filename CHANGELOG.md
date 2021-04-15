@@ -39,6 +39,8 @@
   * Contains a summary of some information on the left side
 * Clipboard now works for text
 * When loading images, thumbnails and raw images will be requested separately
+* Copy to clipboard button added to blobs
+  * Sadly, transparency will not be respected (blame windows)
 
 ### Backend
 * Caps FPS at ~144
