@@ -73,14 +73,13 @@ impl GuiView for BlobView {
                 self.edit = !self.edit;
             }
 
-            ui.same_line();
             if ui.button(im_str!("Copy to Clipboard")) {
                 gui_handle.copy_to_clipboard(self.id);
-                //
             }
             ui.same_line();
-            // copy to clipboard
-            // save to file
+            if ui.button(im_str!("Save to File")) {
+                gui_handle.save_to_file(self.id);
+            }
         }
     }
 }

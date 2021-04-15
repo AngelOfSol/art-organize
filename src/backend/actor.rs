@@ -1,7 +1,7 @@
 use std::{
     ffi::OsStr,
     ops::Deref,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, RwLock},
 };
 
@@ -176,6 +176,11 @@ impl DbHandle {
             .send(AppAction::Db(DbAction::CleanBlobs))
             .unwrap();
     }
+    pub fn save_to_file(&self, id: BlobId) {
+        self.outgoing
+            .send(AppAction::Db(DbAction::SaveBlobToFile(id)))
+            .unwrap();
+    }
 }
 
 #[derive(Debug)]
@@ -213,6 +218,7 @@ pub enum DbAction {
         path: PathBuf,
     },
     CleanBlobs,
+    SaveBlobToFile(BlobId),
 }
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
@@ -318,6 +324,38 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     while let Some(result) = out_futures.next().await {
                         result.unwrap();
                     }
+
+                    save_data(&data).await;
+                });
+            }
+
+            AppAction::Db(DbAction::SaveBlobToFile(id)) => {
+                let db = data.read().unwrap();
+                if !db.exists(id) {
+                    continue;
+                }
+
+                let (storage, file_name) = {
+                    let db = data.read().unwrap();
+                    (db.storage_for(id), db[id].file_name.clone())
+                };
+                let data = data.clone();
+
+                tokio::spawn(async move {
+                    let mut dialog = rfd::AsyncFileDialog::new().set_file_name(&file_name);
+                    if let Some(ext) = Path::new(&file_name)
+                        .extension()
+                        .and_then(|inner| inner.to_str())
+                    {
+                        dialog = dialog.add_filter("Image", &[ext]);
+                    }
+                    let file = if let Some(files) = dialog.save_file().await {
+                        files
+                    } else {
+                        return;
+                    };
+
+                    fs::copy(storage, file.path()).await.unwrap();
 
                     save_data(&data).await;
                 });
@@ -452,7 +490,10 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     DbAction::RemoveTag(remove) => {
                         assert!(db.remove_tag(remove));
                     }
-                    DbAction::AskBlobs { .. } | DbAction::AddBlob { .. } | DbAction::CleanBlobs => {
+                    DbAction::AskBlobs { .. }
+                    | DbAction::AddBlob { .. }
+                    | DbAction::CleanBlobs
+                    | DbAction::SaveBlobToFile(_) => {
                         unreachable!()
                     }
                 }

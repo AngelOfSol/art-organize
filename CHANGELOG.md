@@ -41,6 +41,7 @@
 * When loading images, thumbnails and raw images will be requested separately
 * Copy to clipboard button added to blobs
   * Sadly, transparency will not be respected (blame windows)
+* Save to file button added to blobs
 
 ### Backend
 * Caps FPS at ~144
