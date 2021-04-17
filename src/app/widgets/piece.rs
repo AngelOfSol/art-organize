@@ -10,6 +10,7 @@ use super::{
     date, enum_combo_box,
     tag::{self, InPieceViewResponse},
 };
+use itertools::Itertools;
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
@@ -40,24 +41,19 @@ pub fn tooltip(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     }
 }
 pub fn view_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<(TagId, ItemViewResponse)> {
-    let mut categories = db
+    for category_id in db
         .tags_for_piece(piece_id)
-        .map(|tag| db.category_for_tag(tag))
-        .flatten()
-        .collect::<Vec<_>>();
-    categories.sort();
-    categories.dedup();
-    categories.sort_by_key(|category_id| &db[category_id].name);
-
-    for category_id in categories {
+        .flat_map(|tag| db.category_for_tag(tag))
+        .sorted_by_key(|category_id| &db[category_id].name)
+        .dedup()
+    {
         ui.text(&im_str!("{}", db[category_id].name));
-        let mut tags = db
+
+        for tag_id in db
             .tags_for_piece(piece_id)
             .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
-            .collect::<Vec<_>>();
-        tags.sort_by_key(|tag_id| &db[tag_id].name);
-
-        for tag_id in tags {
+            .sorted_by_key(|tag_id| &db[tag_id].name)
+        {
             match tag::item_view(ui, db, tag_id) {
                 ItemViewResponse::None => {}
                 response => return Some((tag_id, response)),
@@ -68,13 +64,11 @@ pub fn view_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<(TagId, Item
 
     ui.text(im_str!("tag"));
 
-    let mut tags = db
+    for tag_id in db
         .tags_for_piece(piece_id)
         .filter(|tag_id| db.category_for_tag(*tag_id).is_none())
-        .collect::<Vec<_>>();
-    tags.sort_by_key(|tag_id| &db[tag_id].name);
-
-    for tag_id in tags {
+        .sorted_by_key(|tag_id| &db[tag_id].name)
+    {
         match tag::item_view(ui, db, tag_id) {
             ItemViewResponse::None => {}
             response => return Some((tag_id, response)),
@@ -95,22 +89,20 @@ pub enum EditPieceResponse {
 pub fn edit_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse> {
     let mut ret = None;
 
-    let mut categories = db.categories().map(|(id, _)| id).collect::<Vec<_>>();
-    categories.sort();
-    categories.dedup();
-    categories.sort_by_key(|category_id| &db[category_id].name);
-
-    for category_id in categories {
+    for category_id in db
+        .categories()
+        .map(|(id, _)| id)
+        .sorted_by_key(|category_id| &db[category_id].name)
+        .dedup()
+    {
         let _id = ui.push_id(&im_str!("{}", category_id));
         ui.text(&im_str!("{}", db[category_id].name));
 
-        let mut tags = db
+        for tag_id in db
             .tags_for_piece(piece_id)
             .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
-            .collect::<Vec<_>>();
-        tags.sort_by_key(|tag_id| &db[tag_id].name);
-
-        for tag_id in tags {
+            .sorted_by_key(|tag_id| &db[tag_id].name)
+        {
             match tag::in_piece_view(ui, db, tag_id) {
                 InPieceViewResponse::None => (),
                 InPieceViewResponse::Open => {
@@ -130,13 +122,12 @@ pub fn edit_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceRes
         ui.spacing();
     }
     ui.text(&im_str!("tag"));
-    let mut tags = db
+
+    for tag_id in db
         .tags_for_piece(piece_id)
         .filter(|tag_id| db.category_for_tag(*tag_id).is_none())
-        .collect::<Vec<_>>();
-    tags.sort_by_key(|tag_id| &db[tag_id].name);
-
-    for tag_id in tags {
+        .sorted_by_key(|tag_id| &db[tag_id].name)
+    {
         match tag::in_piece_view(ui, db, tag_id) {
             InPieceViewResponse::None => (),
             InPieceViewResponse::Open => {
@@ -282,15 +273,15 @@ fn add_tag_widget(
     category_id: Option<CategoryId>,
     ui: &Ui,
 ) -> Option<EditPieceResponse> {
-    let mut unused_tags = db
+    let unused_tags = db
         .tags()
         .filter(|(tag_id, _)| {
             !db.tags_for_piece(piece_id)
                 .any(|piece_tag_id| piece_tag_id == *tag_id)
                 && db.category_for_tag(*tag_id) == category_id
         })
-        .collect::<Vec<_>>();
-    unused_tags.sort_by_key(|(_, tag)| &tag.name);
+        .sorted_by_key(|(_, tag)| &tag.name)
+        .collect_vec();
     if !unused_tags.is_empty() {
         let (first_tag, _) = unused_tags[0];
 

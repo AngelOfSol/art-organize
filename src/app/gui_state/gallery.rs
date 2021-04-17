@@ -1,4 +1,5 @@
 use db::BlobType;
+use itertools::Itertools;
 use tag::ItemViewResponse;
 
 use super::{piece::PieceView, tag::TagView, GuiHandle, GuiView};
@@ -17,16 +18,18 @@ impl GuiView for Gallery {
     ) {
         let db = gui_handle.db.read().unwrap();
 
-        let mut pieces_sorted = db.pieces().collect::<Vec<_>>();
-        pieces_sorted.sort_by_key(|(_, piece)| piece.added);
-
-        let blobs = pieces_sorted.into_iter().rev().filter_map(|(id, _)| {
-            let mut blobs = db.blobs_for_piece(id);
-            blobs
-                .clone()
-                .find(|id| db[id].blob_type == BlobType::Canon)
-                .or_else(|| blobs.find(|id| db[id].blob_type == BlobType::Variant))
-        });
+        let blobs = db
+            .pieces()
+            .sorted_by_key(|(_, piece)| piece.added)
+            .into_iter()
+            .rev()
+            .filter_map(|(id, _)| {
+                let mut blobs = db.blobs_for_piece(id);
+                blobs
+                    .clone()
+                    .find(|id| db[id].blob_type == BlobType::Canon)
+                    .or_else(|| blobs.find(|id| db[id].blob_type == BlobType::Variant))
+            });
 
         if let Some(id) = gallery::render(
             ui,
@@ -53,15 +56,15 @@ impl GuiView for Gallery {
         ui: &imgui::Ui<'_>,
     ) {
         let db = gui_handle.db.read().unwrap();
-        let mut tag_list = db
+        for (tag_id, _) in db
             .tags()
             .filter(|(id, _)| db.pieces_for_tag(*id).count() > 0)
-            .collect::<Vec<_>>();
-        tag_list.sort_by_key(|(id, _)| db.pieces_for_tag(*id).count());
-        // tag_list is sorted ascending, and we want the greatest 20, not the least 20
-        let mut tag_list = tag_list.into_iter().rev().take(20).collect::<Vec<_>>();
-        tag_list.sort_by_key(|(_, tag)| &tag.name);
-        for (tag_id, _) in tag_list {
+            .sorted_by_key(|(id, _)| db.pieces_for_tag(*id).count())
+            // tag_list is sorted ascending, and we want the greatest 20, not the least 20
+            .rev()
+            .take(20)
+            .sorted_by_key(|(_, tag)| &tag.name)
+        {
             match tag::item_view(ui, &db, tag_id) {
                 ItemViewResponse::None => {}
                 ItemViewResponse::Add => {}

@@ -101,10 +101,10 @@ x add button to add default categories
     - text
     - images
 - optimize to only load thumbnails, and load bigger images on demand
+- save image to file
+- link category in tag to category page
 
 v0.2 milestone
-- link category in tag to category page
-- save image to file
 - change to using iter tools wherever possible
     - specifically the sorted by
 

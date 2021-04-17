@@ -1,6 +1,6 @@
-use imgui::{im_str, Selectable, StyleColor};
-
 use super::{category::CategoryView, tag::TagView, GuiHandle, GuiView};
+use crate::app::widgets::category;
+use imgui::{im_str, Selectable};
 
 #[derive(Debug)]
 pub struct TagList;
@@ -38,17 +38,11 @@ impl GuiView for TagList {
             ui.next_column();
 
             if let Some(category_id) = db.category_for_tag(tag_id) {
-                {
-                    let _color = ui.push_style_color(StyleColor::Text, db[category_id].raw_color());
-                    if Selectable::new(&im_str!("{}", db[category_id].name))
-                        .span_all_columns(false)
-                        .build(ui)
-                    {
-                        gui_handle.goto(CategoryView {
-                            id: category_id,
-                            edit: false,
-                        });
-                    }
+                if category::link(ui, &db[category_id]) {
+                    gui_handle.goto(CategoryView {
+                        id: category_id,
+                        edit: false,
+                    });
                 }
                 ui.same_line();
                 ui.text_colored(
@@ -77,18 +71,7 @@ impl GuiView for TagList {
         ui.separator();
         let db = gui_handle.db.read().unwrap();
         for (category_id, category) in db.categories() {
-            {
-                let _color = ui.push_style_color(StyleColor::Text, category.raw_color());
-                if Selectable::new(&im_str!("{}", category.name))
-                    .span_all_columns(false)
-                    .build(ui)
-                {
-                    gui_handle.goto(CategoryView {
-                        id: category_id,
-                        edit: false,
-                    });
-                }
-            }
+            category::link(ui, category);
             ui.same_line();
             ui.text_colored(
                 [0.4, 0.4, 0.4, 1.0],

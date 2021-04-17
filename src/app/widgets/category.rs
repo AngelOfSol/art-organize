@@ -1,5 +1,7 @@
 use db::{commands::EditCategory, Category, CategoryId, Db};
-use imgui::{im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, Ui};
+use imgui::{
+    im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, Selectable, StyleColor, Ui,
+};
 
 use super::{confirm::confirm_delete_popup, date};
 
@@ -19,6 +21,13 @@ pub fn view(category_id: CategoryId, db: &Db, ui: &Ui<'_>) {
         ),
     );
     date::view("Date Added", &category.added, ui);
+}
+
+pub fn link(ui: &imgui::Ui, category: &db::Category) -> bool {
+    let _color = ui.push_style_color(StyleColor::Text, category.raw_color());
+    Selectable::new(&im_str!("{}", category.name))
+        .span_all_columns(false)
+        .build(ui)
 }
 
 pub enum EditCategoryResponse {

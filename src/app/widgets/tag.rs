@@ -4,7 +4,7 @@ use db::{
 };
 use imgui::{im_str, Selectable, StyleColor, Ui};
 
-use super::{combo_box, confirm::confirm_delete_popup, date};
+use super::{category, combo_box, confirm::confirm_delete_popup, date};
 
 pub fn view(tag_id: TagId, db: &Db, ui: &Ui<'_>) {
     let tag = &db[tag_id];
@@ -13,10 +13,7 @@ pub fn view(tag_id: TagId, db: &Db, ui: &Ui<'_>) {
     date::view("Date Added", &tag.added, ui);
 
     if let Some(category_id) = db.category_for_tag(tag_id) {
-        let category = &db[category_id];
-        ui.text(&im_str!("Category: "));
-        ui.same_line();
-        ui.text_colored(category.raw_color(), im_str!("{}", category.name));
+        category::link(ui, &db[category_id]);
     }
 }
 

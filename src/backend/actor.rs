@@ -10,11 +10,12 @@ use db::{
     BlobId, BlobType, Category, CategoryId, Db, Piece, PieceId, Tag, TagId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
+use itertools::Itertools;
 use regex::Regex;
 use rfd::AsyncFileDialog;
 use tokio::{
     fs,
-    sync::{mpsc, oneshot},
+    sync::{mpsc, oneshot, watch},
 };
 mod blob {
     use std::{
@@ -223,8 +224,10 @@ pub enum DbAction {
 
 pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
     let (tx, rx) = mpsc::unbounded_channel();
+    let (send_dirty, recv_dirty) = watch::channel(());
 
-    tokio::spawn(db_actor(rx, backend.clone()));
+    tokio::spawn(db_actor(rx, Arc::new(send_dirty), backend.clone()));
+    tokio::spawn(save_db_actor(recv_dirty, backend.clone()));
 
     DbHandle {
         backend,
@@ -232,7 +235,11 @@ pub fn start_db_task(backend: Arc<RwLock<DbBackend>>) -> DbHandle {
     }
 }
 
-async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<RwLock<DbBackend>>) {
+async fn db_actor(
+    mut incoming: mpsc::UnboundedReceiver<AppAction>,
+    dirty: Arc<watch::Sender<()>>,
+    data: Arc<RwLock<DbBackend>>,
+) {
     while let Some(action) = incoming.recv().await {
         match action {
             AppAction::Undo => {
@@ -287,6 +294,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 }
 
                 let data = data.clone();
+                let dirty = dirty.clone();
 
                 tokio::spawn(async move {
                     let files = if let Some(files) = rfd::AsyncFileDialog::new().pick_files().await
@@ -325,7 +333,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         result.unwrap();
                     }
 
-                    save_data(&data).await;
+                    dirty.send(()).unwrap();
                 });
             }
 
@@ -339,7 +347,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                     let db = data.read().unwrap();
                     (db.storage_for(id), db[id].file_name.clone())
                 };
-                let data = data.clone();
+                let dirty = dirty.clone();
 
                 tokio::spawn(async move {
                     let mut dialog = rfd::AsyncFileDialog::new().set_file_name(&file_name);
@@ -357,7 +365,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
 
                     fs::copy(storage, file.path()).await.unwrap();
 
-                    save_data(&data).await;
+                    dirty.send(()).unwrap();
                 });
             }
             AppAction::Db(DbAction::AddBlob {
@@ -371,6 +379,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 }
 
                 let data = data.clone();
+                let dirty = dirty.clone();
                 tokio::spawn(async move {
                     let blob = blob::from_path(path.clone(), blob_type).await.unwrap();
 
@@ -384,7 +393,7 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         db.storage_for(id)
                     };
                     fs::copy(path, storage).await.unwrap();
-                    save_data(&data).await;
+                    dirty.send(()).unwrap();
                 });
             }
             AppAction::Db(DbAction::CleanBlobs) => {
@@ -394,16 +403,16 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                         .blobs()
                         .map(|(id, _)| id)
                         .filter(|blob_id| db.pieces_for_blob(*blob_id).count() == 0)
-                        .collect::<Vec<_>>();
+                        .collect_vec();
                     for blob_id in dangling_blobs {
                         db.delete(blob_id);
                     }
                 }
 
-                let (paths, root): (Vec<_>, _) = {
+                let (paths, root) = {
                     let db = data.read().unwrap();
                     (
-                        db.blobs().map(|(id, _)| db.storage_for(id)).collect(),
+                        db.blobs().map(|(id, _)| db.storage_for(id)).collect_vec(),
                         db.root.clone(),
                     )
                 };
@@ -499,17 +508,23 @@ async fn db_actor(mut incoming: mpsc::UnboundedReceiver<AppAction>, data: Arc<Rw
                 }
             }
         }
-        save_data(&data).await;
+        dirty.send(()).unwrap();
     }
 }
 
-async fn save_data(data: &Arc<RwLock<DbBackend>>) {
-    let (root, data) = {
-        let db = data.read().unwrap();
-        let root = data_file(db.root.clone());
-        let data = bincode::serialize::<Db>(&db).unwrap();
+async fn save_db_actor(
+    mut dirty: watch::Receiver<()>,
+    data: Arc<RwLock<DbBackend>>,
+) -> anyhow::Result<()> {
+    loop {
+        dirty.changed().await?;
+        let (root, data) = {
+            let db = data.read().unwrap();
+            let root = data_file(db.root.clone());
+            let data = bincode::serialize::<Db>(&db).unwrap();
 
-        (root, data)
-    };
-    fs::write(root, &data).await.unwrap();
+            (root, data)
+        };
+        fs::write(root, &data).await.unwrap();
+    }
 }

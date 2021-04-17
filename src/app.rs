@@ -11,6 +11,7 @@ use db::BlobId;
 use glam::Vec2;
 use gui_state::help::Help;
 use imgui::{im_str, Key, MenuItem, MouseButton, PopupModal, Ui, Window};
+use itertools::Itertools;
 use std::{
     collections::HashMap,
     sync::{mpsc, Arc, RwLock},
@@ -49,7 +50,7 @@ impl App {
                 .keys()
                 .filter(|id| !db.exists(**id))
                 .copied()
-                .collect::<Vec<_>>();
+                .collect_vec();
             for key in invalid {
                 gui_state.invalidate(&key);
             }
