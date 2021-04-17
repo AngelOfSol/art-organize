@@ -42,6 +42,7 @@
 * Copy to clipboard button added to blobs
   * Sadly, transparency will not be respected (blame windows)
 * Save to file button added to blobs
+* Items are now generally sorted by either their name or their date added
 
 ### Backend
 * Caps FPS at ~144

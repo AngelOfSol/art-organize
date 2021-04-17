@@ -62,6 +62,9 @@ impl GuiState {
             .unwrap()
             .draw_explorer(gui_handle, &self.inner, ui)
     }
+    pub fn label(&self) -> &'static str {
+        self.view_stack.last().unwrap().label()
+    }
 }
 
 impl Default for GuiState {
@@ -104,6 +107,8 @@ pub trait GuiView: Sync + Send + Debug {
         gui_state: &InnerGuiState,
         ui: &imgui::Ui<'_>,
     );
+
+    fn label(&self) -> &'static str;
 }
 
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]

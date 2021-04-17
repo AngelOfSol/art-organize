@@ -2,7 +2,7 @@ use super::{blob::BlobView, tag::TagView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
-use imgui::{im_str, ChildWindow, CollapsingHeader};
+use imgui::{im_str, ChildWindow, TabBar, TabItem};
 use piece::EditPieceResponse;
 use strum::IntoEnumIterator;
 
@@ -29,57 +29,60 @@ impl GuiView for PieceView {
 
         let blob_ids = db.blobs_for_piece(self.id);
 
-        for blob_type in BlobType::iter() {
-            let _id = ui.push_id(&im_str!("{}", blob_type));
-            if CollapsingHeader::new(&im_str!("{}", blob_type))
-                .default_open(true)
-                .build(ui)
-            {
-                let _group = ui.begin_group();
+        TabBar::new(im_str!("Piece Tab Bar")).build(ui, || {
+            for blob_type in BlobType::iter() {
+                let _id = ui.push_id(&im_str!("{}", blob_type));
                 let blob_ids_of_type = blob_ids
                     .clone()
                     .filter(|blob| db[blob].blob_type == blob_type);
-                if let Some(id) = gallery::render(
-                    ui,
-                    blob_ids_of_type,
-                    &gui_handle,
-                    &gui_state.thumbnails,
-                    |blob_id| &db[blob_id].file_name,
-                    |blob_id| {
-                        blob::tooltip(blob_id, &db, ui);
-                    },
-                ) {
-                    gui_handle.goto(BlobView { id, edit: false });
-                }
+                TabItem::new(&im_str!(
+                    "{0} ({1})###{0}",
+                    blob_type,
+                    blob_ids_of_type.clone().count()
+                ))
+                .build(ui, || {
+                    let _group = ui.begin_group();
+                    if let Some(id) = gallery::render(
+                        ui,
+                        blob_ids_of_type,
+                        &gui_handle,
+                        &gui_state.thumbnails,
+                        |blob_id| &db[blob_id].file_name,
+                        |blob_id| {
+                            blob::tooltip(blob_id, &db, ui);
+                        },
+                    ) {
+                        gui_handle.goto(BlobView { id, edit: false });
+                    }
 
-                if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
-                    ui.new_line();
-                } else {
-                    ui.same_line();
-                }
-                ChildWindow::new(im_str!("add button"))
-                    .draw_background(false)
-                    .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
-                    .build(ui, || {
-                        ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
-                        if ui.button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2]) {
-                            gui_handle.ask_blobs_for_piece(self.id, blob_type);
-                        };
-                    });
+                    if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
+                        ui.new_line();
+                    } else {
+                        ui.same_line();
+                    }
+                    ChildWindow::new(im_str!("add button"))
+                        .draw_background(false)
+                        .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
+                        .build(ui, || {
+                            ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
+                            if ui.button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2]) {
+                                gui_handle.ask_blobs_for_piece(self.id, blob_type);
+                            };
+                        });
+                    if ui.is_mouse_hovering_rect(
+                        ui.item_rect_min(),
+                        [
+                            ui.cursor_screen_pos()[0] + ui.content_region_avail()[0],
+                            ui.item_rect_max()[1],
+                        ],
+                    ) {
+                        for file in gui_handle.incoming_files.try_iter() {
+                            gui_handle.new_blob_from_file(self.id, blob_type, file);
+                        }
+                    }
+                });
             }
-
-            if ui.is_mouse_hovering_rect(
-                ui.item_rect_min(),
-                [
-                    ui.cursor_screen_pos()[0] + ui.content_region_avail()[0],
-                    ui.item_rect_max()[1],
-                ],
-            ) {
-                for file in gui_handle.incoming_files.try_iter() {
-                    gui_handle.new_blob_from_file(self.id, blob_type, file);
-                }
-            }
-        }
+        });
     }
 
     fn draw_explorer(
@@ -140,5 +143,8 @@ impl GuiView for PieceView {
                 }
             }
         }
+    }
+    fn label(&self) -> &'static str {
+        "Piece"
     }
 }

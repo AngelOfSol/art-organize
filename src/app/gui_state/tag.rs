@@ -2,6 +2,7 @@ use super::{piece::PieceView, GuiView};
 use crate::app::widgets::*;
 use db::TagId;
 use imgui::im_str;
+use itertools::Itertools;
 use tag::EditTagResponse;
 
 #[derive(Debug)]
@@ -27,6 +28,8 @@ impl GuiView for TagView {
 
         let blob_ids = db
             .pieces_for_tag(self.id)
+            .sorted_by_key(|piece_id| &db[piece_id].added)
+            .rev()
             .filter_map(|piece_id| db.primary_blob_for_piece(piece_id));
 
         if let Some(blob_id) = gallery::render(
@@ -74,5 +77,8 @@ impl GuiView for TagView {
                 }
             }
         }
+    }
+    fn label(&self) -> &'static str {
+        "Tag"
     }
 }

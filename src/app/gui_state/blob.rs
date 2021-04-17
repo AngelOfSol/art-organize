@@ -82,4 +82,8 @@ impl GuiView for BlobView {
             }
         }
     }
+
+    fn label(&self) -> &'static str {
+        "Blob"
+    }
 }

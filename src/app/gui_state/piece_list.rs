@@ -1,4 +1,5 @@
 use imgui::{im_str, Selectable};
+use itertools::Itertools;
 
 use crate::app::widgets::date::DATE_FORMAT;
 
@@ -29,7 +30,7 @@ impl GuiView for PieceList {
         ui.columns(1, im_str!("unheader"), false);
         ui.separator();
         ui.columns(6, im_str!("piece list"), true);
-        for (piece_id, piece) in db.pieces() {
+        for (piece_id, piece) in db.pieces().sorted_by_key(|(_, piece)| &piece.name) {
             let _id = ui.push_id(&im_str!("{}", piece_id));
             if Selectable::new(&im_str!("{}", piece.name))
                 .span_all_columns(false)
@@ -107,5 +108,8 @@ impl GuiView for PieceList {
         ui.separator();
         ui.text(&im_str!("Piece Count: {}", db.pieces().count()));
         ui.text(&im_str!("Blob Count: {}", db.blobs().count()));
+    }
+    fn label(&self) -> &'static str {
+        "Piece List"
     }
 }

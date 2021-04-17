@@ -56,4 +56,7 @@ impl GuiView for CheckForUpdates {
     }
 
     fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, _: &imgui::Ui<'_>) {}
+    fn label(&self) -> &'static str {
+        "Update"
+    }
 }

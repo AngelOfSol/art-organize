@@ -3,6 +3,7 @@ use crate::app::widgets::*;
 use category::EditCategoryResponse;
 use db::CategoryId;
 use imgui::{im_str, Selectable};
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct CategoryView {
@@ -27,7 +28,11 @@ impl GuiView for CategoryView {
 
         ui.columns(1, im_str!("unheader"), false);
         ui.columns(2, im_str!("tag list"), true);
-        for (tag_id, tag) in db.tags_for_category(self.id).map(|id| (id, &db[id])) {
+        for (tag_id, tag) in db
+            .tags_for_category(self.id)
+            .map(|id| (id, &db[id]))
+            .sorted_by_key(|(_, tag)| &tag.name)
+        {
             if Selectable::new(&im_str!("{}", tag.name))
                 .span_all_columns(false)
                 .build(ui)
@@ -75,5 +80,8 @@ impl GuiView for CategoryView {
                 }
             }
         }
+    }
+    fn label(&self) -> &'static str {
+        "Category"
     }
 }

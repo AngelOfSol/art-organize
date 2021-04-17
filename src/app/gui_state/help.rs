@@ -199,6 +199,9 @@ impl GuiView for Help {
     }
 
     fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, _: &imgui::Ui<'_>) {}
+    fn label(&self) -> &'static str {
+        "Help"
+    }
 }
 
 fn sub_heading<F: FnOnce()>(ui: &Ui<'_>, label: &str, f: F) {

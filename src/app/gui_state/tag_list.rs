@@ -1,6 +1,7 @@
 use super::{category::CategoryView, tag::TagView, GuiHandle, GuiView};
 use crate::app::widgets::category;
 use imgui::{im_str, Selectable};
+use itertools::Itertools;
 
 #[derive(Debug)]
 pub struct TagList;
@@ -19,7 +20,7 @@ impl GuiView for TagList {
         ui.columns(1, im_str!("unheader"), false);
         ui.separator();
         ui.columns(2, im_str!("tag list"), true);
-        for (tag_id, tag) in db.tags() {
+        for (tag_id, tag) in db.tags().sorted_by_key(|(_, tag)| &tag.name) {
             let _id = ui.push_id(&im_str!("{}", tag_id));
             if Selectable::new(&im_str!("{}", tag.name))
                 .span_all_columns(false)
@@ -70,7 +71,10 @@ impl GuiView for TagList {
         }
         ui.separator();
         let db = gui_handle.db.read().unwrap();
-        for (category_id, category) in db.categories() {
+        for (category_id, category) in db
+            .categories()
+            .sorted_by_key(|(_, category)| &category.name)
+        {
             category::link(ui, category);
             ui.same_line();
             ui.text_colored(
@@ -78,5 +82,8 @@ impl GuiView for TagList {
                 im_str!("{}", db.tags_for_category(category_id).count()),
             );
         }
+    }
+    fn label(&self) -> &'static str {
+        "Tag List"
     }
 }

@@ -27,4 +27,8 @@ impl GuiView for Home {
     }
 
     fn draw_explorer(&mut self, _: &GuiHandle, _: &super::InnerGuiState, _: &imgui::Ui<'_>) {}
+
+    fn label(&self) -> &'static str {
+        "Home"
+    }
 }

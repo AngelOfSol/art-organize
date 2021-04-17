@@ -78,4 +78,7 @@ impl GuiView for Gallery {
             }
         }
     }
+    fn label(&self) -> &'static str {
+        "Gallery"
+    }
 }

@@ -195,7 +195,7 @@ impl App {
                     ui.tooltip_text(im_str!("Currently unimplemented."));
                 }
             });
-        Window::new(im_str!("Main"))
+        Window::new(&im_str!("Main##{}", gui_state.label()))
             .movable(false)
             .resizable(false)
             .collapsible(false)
@@ -243,7 +243,7 @@ impl App {
                 }
             });
 
-        Window::new(im_str!("Explorer"))
+        Window::new(&im_str!("Explorer##{}", gui_state.label()))
             .movable(false)
             .resizable(false)
             .collapsible(false)
