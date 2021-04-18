@@ -63,7 +63,6 @@ pub fn render<'a, I: Iterator<Item = BlobId>, T: Fn(BlobId), L: Fn(BlobId) -> &'
             ui.new_line();
         }
     }
-    ui.new_line();
 
     ret
 }

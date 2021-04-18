@@ -2,6 +2,7 @@ use super::{blob::BlobView, tag::TagView, GuiView};
 use crate::app::widgets::*;
 use crate::consts::*;
 use db::{BlobType, PieceId};
+use glam::Vec2;
 use imgui::{im_str, ChildWindow, TabBar, TabItem};
 use piece::EditPieceResponse;
 use strum::IntoEnumIterator;
@@ -55,19 +56,17 @@ impl GuiView for PieceView {
                         gui_handle.goto(BlobView { id, edit: false });
                     }
 
-                    if ui.content_region_avail()[0] < THUMBNAIL_SIZE + IMAGE_BUFFER {
-                        ui.new_line();
-                    } else {
-                        ui.same_line();
-                    }
-                    ChildWindow::new(im_str!("add button"))
-                        .draw_background(false)
+                    imgui::ChildWindow::new(im_str!("add button"))
                         .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
+                        .draw_background(false)
                         .build(ui, || {
-                            ui.set_cursor_pos([IMAGE_BUFFER / 2.0; 2]);
+                            ui.set_cursor_pos(
+                                (Vec2::from(ui.cursor_pos()) + Vec2::splat(IMAGE_BUFFER) / 2.0)
+                                    .into(),
+                            );
                             if ui.button_with_size(im_str!("+"), [THUMBNAIL_SIZE; 2]) {
                                 gui_handle.ask_blobs_for_piece(self.id, blob_type);
-                            };
+                            }
                         });
                     if ui.is_mouse_hovering_rect(
                         ui.item_rect_min(),
