@@ -11,8 +11,6 @@ use nom::{
     IResult,
 };
 
-mod tag;
-
 fn parse_and(input: &str) -> IResult<&str, Search> {
     map(
         verify(
@@ -36,7 +34,7 @@ fn parse_or(input: &str) -> IResult<&str, Search> {
     )(input)
 }
 
-fn parse_search(input: &str) -> IResult<&str, Search> {
+pub fn parse_search(input: &str) -> IResult<&str, Search> {
     alt((parse_and, parse_or, parse_paren, parse_negate, parse_test))(input)
 }
 

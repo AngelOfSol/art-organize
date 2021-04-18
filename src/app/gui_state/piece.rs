@@ -56,7 +56,7 @@ impl GuiView for PieceView {
                         gui_handle.goto(BlobView { id, edit: false });
                     }
 
-                    imgui::ChildWindow::new(im_str!("add button"))
+                    ChildWindow::new(im_str!("add button"))
                         .size([THUMBNAIL_SIZE + IMAGE_BUFFER; 2])
                         .draw_background(false)
                         .build(ui, || {

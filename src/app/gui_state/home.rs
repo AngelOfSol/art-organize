@@ -1,7 +1,8 @@
 use imgui::im_str;
 
 use super::{
-    gallery::Gallery, help::Help, piece_list::PieceList, tag_list::TagList, GuiHandle, GuiView,
+    gallery::Gallery, help::Help, piece_list::PieceList, search::Search, tag_list::TagList,
+    GuiHandle, GuiView,
 };
 
 #[derive(Debug)]
@@ -20,6 +21,11 @@ impl GuiView for Home {
         }
         if ui.button(im_str!("Pieces")) {
             gui_handle.goto(PieceList);
+        }
+        if ui.button(im_str!("Search##Button")) {
+            gui_handle.goto(Search {
+                query_result: vec![],
+            });
         }
         if ui.button(im_str!("Help")) {
             gui_handle.goto(Help);

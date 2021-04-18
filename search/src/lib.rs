@@ -1,2 +1,5 @@
+mod execute;
 pub mod model;
-pub mod parse;
+mod parse;
+
+pub use parse::parse_search;

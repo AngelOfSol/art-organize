@@ -24,6 +24,7 @@ pub mod help;
 pub mod home;
 pub mod piece;
 pub mod piece_list;
+pub mod search;
 pub mod tag;
 pub mod tag_list;
 pub mod update;
