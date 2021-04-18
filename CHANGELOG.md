@@ -1,4 +1,53 @@
 # CHANGELOG
+## v0.3.0
+* Adds searching
+  * Navigating to the search screen will return a view containing the results the search bar
+  * Search syntax
+    * Items
+      * "skeb" -> Searches for all pieces with a tag named "skeb" and any category
+        * If no tag exists in your database (e.g. "my_nonexistent_tag"), it will be ignored in the search
+      * "source:skeb" -> Searches for all pieces with a tag named "skeb" that has the category "source"
+        * If no tag exists in your database (e.g. "my_nonexistent_tag"), it will be ignored in the search
+        * Non-existent categories will cause the search to fail
+        * ":skeb" will search for tags named "skeb" that have no category
+      * "source:fan" -> Searches for all pieces that are id'd as fan creations
+        * "source:official" and "source:commission" are the other two
+      * "media:image" -> Searches for all pieces that are id'd as images
+        * "media:text" exists, but is generally unused at the moment
+      * "after:12/1/2020" -> Searches for all pieces added on or after December 1st 2020
+        * "before:12/1/2020" does the inverse search
+      * "tip>=20" -> Searches for all pieces with a tip greater than 20
+        * ">=" or "<=" are the valid operations
+        * "tip", "base", and "total" are the valid prices to select from
+    * Modifiers
+      * Negate
+        * "!skeb" -> Inverts the condition of "skeb", returning pieces that don't match that tag
+        * Only affects the next item
+      * And
+        * "skeb portrait" -> Searches for all pieces that match both "skeb" and "portrait"
+        * This condition can have any number of items (e.g. "skeb portrait hat")
+      * Or
+        * "skeb|twitter" -> Searches for all pieces that match either "skeb" or "twitter"
+        * This condition can have any number of items (e.g. "skeb|twitter|deviantart")
+    * Complex Searches
+      * Or binds tighter than And
+        * "portrait skeb|twitter" -> Searches for all pieces that
+          * match "skeb" or "twitter"
+          * AND match "portrait"
+      * Parens
+        * Parentheses let you group search terms together to make more complex searches
+        * "(portrait skeb)|twitter" -> Searches for all pieces that
+          * match "portrait" and "skeb"
+          * OR match just "twitter"
+      * Negating a grouping
+        * "!skeb portrait" -> Searches for all pieces that
+          * don't match "skeb"
+          * AND do match "portrait
+        * "!(skeb portrait") -> Searches for all pieces that
+          * don't match
+            * matches "skeb" and "portrait
+          * (e.g. pieces that match "!skeb !portrait" or "!skeb portrait" or "skeb !portrait")
+
 ## v0.2.0
 ### Features
 * Adds the ability to create tags with the following fields
