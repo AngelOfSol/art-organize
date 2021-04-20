@@ -103,15 +103,39 @@ x add button to add default categories
 - optimize to only load thumbnails, and load bigger images on demand
 - save image to file
 - link category in tag to category page
-
-v0.2 milestone
 - change to using iter tools wherever possible
     - specifically the sorted by
+- search
+    - parsing
+    - execution
+    - basic implementation
+
+v0.3 milestone
+- search
+    - better response ux
+        - enter to move to search screen
+        - show what the parsed query looks like
+        - allow gallery vs list view
+        - allow sort orders
+        - show tags
+        - improve metrics ux
+    - optimize
+        - search only once on text update
+        - move sort by to gui_command
+        - make stable sorts + allow resorting to allow combo sorts (by name, by date; by tip, by artist; etc)
+    - add autocomplete
+        - finish callback PR
+        - create floating window when search results exist
+        - include tag autocomplete
+        - include category:tag autocomplete
+        - include source/media autocomplete
+        - include date autocomplete
+        - include price autocomplete
 
 
 
 
-v0.3 and beyond
+v0.4 and beyond
 - try something different for confirming editing.
 - reorganize query-ing mechanism for easier to define queries
 - implement searching
@@ -121,58 +145,8 @@ v0.3 and beyond
     - allow it to take a search to filter data
 - add a settings screen
 - switch to tables api
-- allow user to add contextual shell commands via the settings screen
+x allow user to add contextual shell commands via the settings screen
+- remove contextual shell commands
 - add config/settings info to allow user to change style
 - think about removing media type?
 - markdown renderer
-- clipboard support
-
-
-
-tag syntax:
-tag = [a-zA-Z0-9_()-+]+
-
-search syntax
-search_list = item -> (" " -> item)*
-item = grouped | or_list | single
-
-single = modifiers? -> tag | date_added | price | source_type | media_type
-
-source_type = "fan" | "official" | "commission"
-media_type = "text" | "image"
-
-price = price_op -> number
-price_op = ">" | ">=" | ...
-
-date_added = date_op -> date 
-date_op = "before" | "after" | "on"
-
-date = anything chrono can parse
-
-modifiers = "-" 
-
-or_list = single -> ("|" -> item)+
-
-grouped = "(" -> search_list -> ")"
-
-
-pub struct Condition {
-    negate: bool,
-    tests: Tests,
-}
-
-enum Tests {
-    And(Vec<Condition>)
-    Or(Vec<Condition>)
-    Single(Test),
-    
-}
-
-pub enum Test {
-    Tag(Tag),
-    Source(SourceType),
-    Media(MediaType),
-    DateAdded(DateOp, DateTime<Local>),
-    Price(PriceOp, u32),
-}
-

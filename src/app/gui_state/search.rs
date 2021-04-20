@@ -1,14 +1,36 @@
 use db::PieceId;
 use imgui::{im_str, Selectable};
 use itertools::Itertools;
+use tag::ItemViewResponse;
 
-use crate::app::widgets::date::DATE_FORMAT;
+use crate::app::widgets::{date::DATE_FORMAT, tag};
 
-use super::{GuiHandle, GuiView};
+use super::{piece::PieceView, tag::TagView, GuiHandle, GuiView};
 
 #[derive(Debug)]
 pub struct Search {
     pub query_result: Vec<PieceId>,
+    pub ascending: bool,
+    pub sorted_by: SortedBy,
+    pub show_single_tags: bool,
+}
+
+impl Default for Search {
+    fn default() -> Self {
+        Self {
+            query_result: Vec::new(),
+            ascending: true,
+            sorted_by: SortedBy::Name,
+            show_single_tags: false,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum SortedBy {
+    Name,
+    Price,
+    Added,
 }
 
 impl GuiView for Search {
@@ -25,32 +47,76 @@ impl GuiView for Search {
             self.query_result = parsed.execute(&db).collect();
         }
 
-        let query_result = self.query_result.iter().map(|id| (*id, &db[id]));
-
         ui.columns(6, im_str!("header"), true);
 
-        ui.text(im_str!("Name (# of Blobs)"));
+        if Selectable::new(im_str!("Name (# of Blobs)"))
+            .selected(matches!(self.sorted_by, SortedBy::Name))
+            .build(ui)
+        {
+            match self.sorted_by {
+                SortedBy::Name => self.ascending = !self.ascending,
+                SortedBy::Price | SortedBy::Added => {
+                    self.sorted_by = SortedBy::Name;
+                    self.ascending = true
+                }
+            }
+        }
         ui.next_column();
         ui.text(im_str!("Media Type"));
         ui.next_column();
         ui.text(im_str!("Source Type"));
         ui.next_column();
-        ui.text(im_str!("Price"));
+        if Selectable::new(im_str!("Price"))
+            .selected(matches!(self.sorted_by, SortedBy::Price))
+            .build(ui)
+        {
+            match self.sorted_by {
+                SortedBy::Price => self.ascending = !self.ascending,
+                SortedBy::Name | SortedBy::Added => {
+                    self.sorted_by = SortedBy::Price;
+                    self.ascending = true
+                }
+            }
+        }
         ui.next_column();
         ui.text(im_str!("Tip"));
         ui.next_column();
-        ui.text(im_str!("Date Added"));
+        if Selectable::new(im_str!("Date Added"))
+            .selected(matches!(self.sorted_by, SortedBy::Added))
+            .build(ui)
+        {
+            match self.sorted_by {
+                SortedBy::Added => self.ascending = !self.ascending,
+                SortedBy::Price | SortedBy::Name => {
+                    self.sorted_by = SortedBy::Added;
+                    self.ascending = true
+                }
+            }
+        }
 
-        ui.columns(1, im_str!("unheader"), false);
+        ui.next_column();
         ui.separator();
-        ui.columns(6, im_str!("piece list"), true);
-        for (piece_id, piece) in query_result.sorted_by_key(|(_, piece)| &piece.name) {
+
+        let query_result = self.query_result.iter().map(|id| (*id, &db[id]));
+        let query_result = match self.sorted_by {
+            SortedBy::Name => query_result.sorted_by_key(|(_, piece)| piece.name.to_lowercase()),
+            SortedBy::Price => query_result.sorted_by_key(|(_, piece)| piece.base_price),
+            SortedBy::Added => query_result.sorted_by_key(|(_, piece)| piece.added),
+        };
+        let query_result: Box<dyn Iterator<Item = _>> =
+            if !self.ascending ^ matches!(self.sorted_by, SortedBy::Added) {
+                Box::new(query_result.rev())
+            } else {
+                Box::new(query_result)
+            };
+
+        for (piece_id, piece) in query_result {
             let _id = ui.push_id(&im_str!("{}", piece_id));
             if Selectable::new(&im_str!("{}", piece.name))
                 .span_all_columns(false)
                 .build(ui)
             {
-                gui_handle.goto(super::piece::PieceView {
+                gui_handle.goto(PieceView {
                     id: piece_id,
                     edit: false,
                 })
@@ -106,7 +172,7 @@ impl GuiView for Search {
             ui.text(&im_str!("Total Spent: ${}", total_spent));
             ui.text(&im_str!(
                 "Tip Percentage: {}%",
-                tip_spent * 100 / total_spent
+                (tip_spent * 100).checked_div(total_spent).unwrap_or(0)
             ));
 
             let avg_price = query_result
@@ -128,9 +194,38 @@ impl GuiView for Search {
             ui.text(&im_str!(
                 "Blob Count: {}",
                 query_result
+                    .clone()
                     .flat_map(|(id, _)| db.blobs_for_piece(*id))
                     .count()
             ));
+
+            ui.separator();
+            ui.checkbox(im_str!("Show 1-count tags"), &mut self.show_single_tags);
+
+            imgui::ChildWindow::new(im_str!("Tags"))
+                .draw_background(false)
+                .build(ui, || {
+                    for (count, tag_id) in query_result
+                        .clone()
+                        .flat_map(|(id, _)| db.tags_for_piece(*id))
+                        .sorted()
+                        .dedup_with_count()
+                        .filter(|(count, _)| *count > 1 || self.show_single_tags)
+                        .sorted_by_key(|(_, id)| &db[id].name)
+                    {
+                        match tag::item_view_with_count(ui, &db, tag_id, count) {
+                            ItemViewResponse::None => {}
+                            ItemViewResponse::Add => {}
+                            ItemViewResponse::AddNegated => {}
+                            ItemViewResponse::Open => {
+                                gui_handle.goto(TagView {
+                                    id: tag_id,
+                                    edit: false,
+                                });
+                            }
+                        }
+                    }
+                });
         }
     }
     fn label(&self) -> &'static str {

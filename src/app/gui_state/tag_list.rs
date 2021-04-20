@@ -75,7 +75,12 @@ impl GuiView for TagList {
             .categories()
             .sorted_by_key(|(_, category)| &category.name)
         {
-            category::link(ui, category);
+            if category::link(ui, category) {
+                gui_handle.goto(CategoryView {
+                    id: category_id,
+                    edit: false,
+                });
+            }
             ui.same_line();
             ui.text_colored(
                 [0.4, 0.4, 0.4, 1.0],

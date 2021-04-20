@@ -199,7 +199,6 @@ impl App {
             .movable(false)
             .resizable(false)
             .collapsible(false)
-            .scroll_bar(false)
             .title_bar(false)
             .position(
                 layout[&LayoutIds::Main].position.into(),

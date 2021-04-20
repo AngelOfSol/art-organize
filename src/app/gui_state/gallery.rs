@@ -24,11 +24,11 @@ impl GuiView for Gallery {
             .into_iter()
             .rev()
             .filter_map(|(id, _)| {
-                let mut blobs = db.blobs_for_piece(id);
-                blobs
-                    .clone()
-                    .find(|id| db[id].blob_type == BlobType::Canon)
-                    .or_else(|| blobs.find(|id| db[id].blob_type == BlobType::Variant))
+                db.blobs_for_piece(id)
+                    .sorted_by_key(|id| db[id].added)
+                    .rev()
+                    .sorted_by_key(|id| db[id].blob_type)
+                    .next()
             });
 
         if let Some(id) = gallery::render(

@@ -23,9 +23,7 @@ impl GuiView for Home {
             gui_handle.goto(PieceList);
         }
         if ui.button(im_str!("Search##Button")) {
-            gui_handle.goto(Search {
-                query_result: vec![],
-            });
+            gui_handle.goto(Search::default());
         }
         if ui.button(im_str!("Help")) {
             gui_handle.goto(Help);

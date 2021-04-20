@@ -101,6 +101,10 @@ pub enum ItemViewResponse {
 }
 
 pub fn item_view(ui: &Ui, db: &Db, tag_id: TagId) -> ItemViewResponse {
+    item_view_with_count(ui, db, tag_id, db.pieces_for_tag(tag_id).count())
+}
+
+pub fn item_view_with_count(ui: &Ui, db: &Db, tag_id: TagId, count: usize) -> ItemViewResponse {
     let tag = &db[tag_id];
 
     let button_size = [
@@ -145,10 +149,7 @@ pub fn item_view(ui: &Ui, db: &Db, tag_id: TagId) -> ItemViewResponse {
     }
 
     ui.same_line();
-    ui.text_colored(
-        [0.4, 0.4, 0.4, 1.0],
-        &im_str!("{}", db.pieces_for_tag(tag_id).count()),
-    );
+    ui.text_colored([0.4, 0.4, 0.4, 1.0], &im_str!("{}", count));
 
     result
 }

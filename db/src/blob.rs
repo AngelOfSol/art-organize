@@ -22,7 +22,7 @@ impl Blob {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, EnumIter)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy, EnumIter, PartialOrd, Ord)]
 pub enum BlobType {
     Canon,
     Variant,

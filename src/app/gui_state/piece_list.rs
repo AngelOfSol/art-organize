@@ -27,9 +27,9 @@ impl GuiView for PieceList {
         ui.next_column();
         ui.text(im_str!("Date Added"));
 
-        ui.columns(1, im_str!("unheader"), false);
+        ui.next_column();
         ui.separator();
-        ui.columns(6, im_str!("piece list"), true);
+
         for (piece_id, piece) in db.pieces().sorted_by_key(|(_, piece)| &piece.name) {
             let _id = ui.push_id(&im_str!("{}", piece_id));
             if Selectable::new(&im_str!("{}", piece.name))
