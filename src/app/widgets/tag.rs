@@ -69,7 +69,7 @@ pub fn edit(tag_id: TagId, db: &Db, ui: &Ui<'_>) -> EditTagResponse {
 
     if let Some(new_id) = combo_box(
         ui,
-        &im_str!("Category"),
+        im_str!("Category"),
         x,
         &db.category_for_tag(tag_id),
         |id| match id {

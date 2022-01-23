@@ -1,4 +1,3 @@
-use db::BlobType;
 use itertools::Itertools;
 use tag::ItemViewResponse;
 
@@ -34,7 +33,7 @@ impl GuiView for Gallery {
         if let Some(id) = gallery::render(
             ui,
             blobs,
-            &gui_handle,
+            gui_handle,
             &gui_state.thumbnails,
             |blob| &db[db.pieces_for_blob(blob).next().unwrap()].name,
             |blob| {

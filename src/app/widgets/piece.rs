@@ -287,7 +287,7 @@ fn add_tag_widget(
 
         if let Some(tag_id) = super::combo_box(
             ui,
-            &im_str!("Add"),
+            im_str!("Add"),
             unused_tags.into_iter().map(|(id, _)| id),
             &first_tag,
             |id| im_str!("{}", db[id].name),

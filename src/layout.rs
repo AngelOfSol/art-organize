@@ -158,12 +158,11 @@ impl<Id, T> Group<Id, T> {
         });
         let available_for_flex = scalar - total_pixels;
 
-        if available_for_flex < 1.0 && total_flex > 0.0 {
-            panic!(
-                "expected to have at least 1 pixel to allocate to flex items, instead found {}",
-                available_for_flex
-            );
-        }
+        assert!(
+            !(available_for_flex < 1.0 && total_flex > 0.0),
+            "expected to have at least 1 pixel to allocate to flex items, instead found {}",
+            available_for_flex
+        );
 
         self.data.iter().map(move |(_, dim)| match dim {
             Dimension::Pixels(value) => *value,

@@ -1,28 +1,29 @@
-pub use self::serialized::{
-    blob::{Blob, BlobId, BlobType},
-    media_type::MediaType,
-    piece::{Piece, PieceId},
-    source_type::SourceType,
-    tag::{Tag, TagId},
-    tag_category::{Category, CategoryId},
+pub use self::piece::{Piece, PieceId};
+use super::{
+    serialized::{
+        blob::{Blob, BlobId, BlobType},
+        tag::{Tag, TagId},
+        tag_category::{Category, CategoryId},
+    },
+    Db as DbV1,
 };
+use crate::table::Table;
+use crate::traits::{DeleteFrom, EditFrom, IdExist};
 use commands::{AttachBlob, AttachCategory, AttachTag};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
 };
-use table::Table;
-use traits::{DeleteFrom, EditFrom, IdExist};
 
 pub mod commands;
-mod serialized;
-mod table;
-pub mod traits;
-pub mod v2;
+pub mod piece;
+
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
+pub struct Db {}
 
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
-pub struct Db {
+pub struct SerializedDb {
     pieces: Table<Piece>,
     blobs: Table<Blob>,
     tags: Table<Tag>,
@@ -33,7 +34,45 @@ pub struct Db {
     tag_category: BTreeMap<TagId, CategoryId>,
 }
 
-impl Db {
+impl From<DbV1> for SerializedDb {
+    fn from(value: DbV1) -> Self {
+        Self {
+            pieces: value
+                .pieces
+                .iter()
+                .map(|(id, value)| {
+                    (
+                        usize::from(id),
+                        Piece {
+                            description: value.name.clone(),
+                            added: value.added,
+                        },
+                    )
+                })
+                .collect(),
+            blobs: value.blobs,
+            tags: value.tags,
+            categories: value.categories,
+            media: value
+                .media
+                .into_iter()
+                .map(|(lhs, rhs)| (usize::from(lhs).into(), rhs))
+                .collect(),
+            piece_tags: value
+                .piece_tags
+                .into_iter()
+                .map(|(lhs, rhs)| (usize::from(lhs).into(), rhs))
+                .collect(),
+            tag_category: value.tag_category,
+        }
+    }
+}
+
+// do two versions
+// one that serializes and uses numeric IDs (just reuse what already exists)
+// one that is used by the application and just has RCs
+
+impl SerializedDb {
     pub fn create_blob(&mut self, data: Blob) -> BlobId {
         self.blobs.insert(data)
     }
@@ -84,7 +123,7 @@ impl Db {
 
     pub fn primary_blob_for_piece(&self, piece: PieceId) -> Option<BlobId> {
         self.blobs_for_piece(piece)
-            .find(|blob_id| self[blob_id].blob_type == BlobType::Canon)
+            .find(|blob_id| self.blobs[*blob_id].blob_type == BlobType::Canon)
     }
 
     pub fn tags_for_piece(&self, piece: PieceId) -> impl Iterator<Item = TagId> + Clone + '_ {
@@ -129,7 +168,7 @@ impl Db {
     }
 
     pub fn storage_for(&self, id: BlobId) -> PathBuf {
-        self[id].storage_name(id)
+        self.blobs[id].storage_name(id)
     }
 
     pub fn exists<Id: IdExist<Self>>(&self, id: Id) -> bool {

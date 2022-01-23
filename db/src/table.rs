@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use slab::Slab;
-use std::{collections::BTreeMap, fmt::Display, marker::PhantomData, ops::Index};
+use std::{
+    collections::BTreeMap, fmt::Display, iter::FromIterator, marker::PhantomData, ops::Index,
+};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TableId<T>(usize, PhantomData<T>);
@@ -20,6 +22,12 @@ impl<T> Copy for TableId<T> {}
 impl<T> From<usize> for TableId<T> {
     fn from(value: usize) -> Self {
         TableId(value, PhantomData)
+    }
+}
+
+impl<T> From<TableId<T>> for usize {
+    fn from(inner: TableId<T>) -> Self {
+        inner.0
     }
 }
 
@@ -53,6 +61,15 @@ impl<T> Display for TableId<T> {
 pub struct Table<T> {
     data: Slab<T>,
 }
+
+impl<T> FromIterator<(usize, T)> for Table<T> {
+    fn from_iter<I: IntoIterator<Item = (usize, T)>>(iter: I) -> Self {
+        Table {
+            data: iter.into_iter().collect(),
+        }
+    }
+}
+
 impl<T: PartialEq> PartialEq for Table<T> {
     fn eq(&self, other: &Self) -> bool {
         self.iter().zip(other.iter()).all(|(lhs, rhs)| lhs == rhs)

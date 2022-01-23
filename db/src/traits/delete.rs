@@ -1,8 +1,8 @@
-use crate::{tag::TagId, tag_category::CategoryId, BlobId, Db, PieceId};
+use crate::{BlobId, CategoryId, Db, PieceId, TagId};
 
 use super::DeleteFrom;
 
-impl DeleteFrom for PieceId {
+impl DeleteFrom<Db> for PieceId {
     fn delete_from(self, db: &mut Db) -> bool {
         if db.exists(self) {
             db.pieces.remove(self);
@@ -16,7 +16,7 @@ impl DeleteFrom for PieceId {
     }
 }
 
-impl DeleteFrom for BlobId {
+impl DeleteFrom<Db> for BlobId {
     fn delete_from(self, db: &mut Db) -> bool {
         if db.exists(self) {
             db.blobs.remove(self);
@@ -28,7 +28,7 @@ impl DeleteFrom for BlobId {
     }
 }
 
-impl DeleteFrom for TagId {
+impl DeleteFrom<Db> for TagId {
     fn delete_from(self, db: &mut Db) -> bool {
         if db.exists(self) {
             db.tags.remove(self);
@@ -41,7 +41,7 @@ impl DeleteFrom for TagId {
     }
 }
 
-impl DeleteFrom for CategoryId {
+impl DeleteFrom<Db> for CategoryId {
     fn delete_from(self, db: &mut Db) -> bool {
         if db.exists(self) {
             db.categories.remove(self);
