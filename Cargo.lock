@@ -86,7 +86,6 @@ dependencies = [
  "imgui-wgpu",
  "imgui-winit-support",
  "interprocess",
- "ipc",
  "itertools",
  "lazy_static",
  "regex",
@@ -1546,17 +1545,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ipc"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "interprocess",
- "serde",
- "tokio",
-]
-
-[[package]]
 name = "ipnet"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2733,13 +2721,13 @@ dependencies = [
 [[package]]
 name = "slab"
 version = "0.4.2"
-source = "git+https://github.com/tokio-rs/slab.git#3d5ebeb87fb2349a7e04832286f5530e65a935be"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
 
 [[package]]
 name = "slab"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
+source = "git+https://github.com/tokio-rs/slab.git#3d5ebeb87fb2349a7e04832286f5530e65a935be"
 
 [[package]]
 name = "slotmap"

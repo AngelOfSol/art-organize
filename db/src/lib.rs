@@ -1,5 +1,3 @@
-#![feature(btree_retain)]
-
 pub use self::{
     blob::{Blob, BlobId, BlobType},
     contained_piece::ContainedPiece,
