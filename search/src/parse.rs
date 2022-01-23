@@ -1,4 +1,4 @@
-use crate::model::{Condition, DateOp, PriceOp, PriceType, Search};
+use crate::model::{Condition, DateOp, Search};
 use chrono::NaiveDate;
 use db::{MediaType, SourceType};
 use nom::{
@@ -64,40 +64,7 @@ fn parse_item(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_condition(input: &str) -> IResult<&str, Condition> {
-    alt((
-        parse_source,
-        parse_media,
-        parse_added,
-        parse_price,
-        parse_tag_with_category,
-        parse_tag,
-    ))(input)
-}
-
-fn parse_source(input: &str) -> IResult<&str, Condition> {
-    map_opt(
-        verify(parse_whole, |(lhs, _)| *lhs == "source"),
-        |(_, rhs)| {
-            Some(match rhs {
-                "fan" => Condition::Source(SourceType::FanCreation),
-                "commission" => Condition::Source(SourceType::Commission),
-                "official" => Condition::Source(SourceType::Official),
-                _ => return None,
-            })
-        },
-    )(input)
-}
-fn parse_media(input: &str) -> IResult<&str, Condition> {
-    map_opt(
-        verify(parse_whole, |(lhs, _)| *lhs == "media"),
-        |(_, rhs)| {
-            Some(match rhs {
-                "image" => Condition::Media(MediaType::Image),
-                "text" => Condition::Media(MediaType::Text),
-                _ => return None,
-            })
-        },
-    )(input)
+    alt((parse_added, parse_tag_with_category, parse_tag))(input)
 }
 
 fn parse_added(input: &str) -> IResult<&str, Condition> {
@@ -111,26 +78,6 @@ fn parse_added(input: &str) -> IResult<&str, Condition> {
             NaiveDate::parse_from_str(rhs, "%m/%d/%Y").ok()?,
         ))
     })(input)
-}
-fn parse_price(input: &str) -> IResult<&str, Condition> {
-    map_opt(
-        tuple((parse_item, alt((tag("<="), tag(">="))), parse_item)),
-        |(price_type, operation, value)| {
-            let price_type = match price_type {
-                "total" => PriceType::Total,
-                "base" => PriceType::Base,
-                "tip" => PriceType::Tip,
-                _ => return None,
-            };
-            let operation = match operation {
-                ">=" => PriceOp::GreaterEqual,
-                "<=" => PriceOp::LesserEqual,
-                _ => unreachable!(),
-            };
-            let value = value.parse().ok()?;
-            Some(Condition::Price(price_type, operation, value))
-        },
-    )(input)
 }
 
 fn parse_tag(input: &str) -> IResult<&str, Condition> {

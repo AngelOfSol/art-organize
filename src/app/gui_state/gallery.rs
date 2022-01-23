@@ -35,7 +35,7 @@ impl GuiView for Gallery {
             blobs,
             gui_handle,
             &gui_state.thumbnails,
-            |blob| &db[db.pieces_for_blob(blob).next().unwrap()].name,
+            |blob| &db[db.pieces_for_blob(blob).next().unwrap()].description,
             |blob| {
                 let piece_id = db.pieces_for_blob(blob).next().unwrap();
                 piece::tooltip(piece_id, &db, ui);

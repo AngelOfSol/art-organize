@@ -1,5 +1,5 @@
 use crate::{
-    commands::{EditBlob, EditCategory, EditPiece, EditTag},
+    v2::commands::{EditBlob, EditCategory, EditPiece, EditTag},
     Db,
 };
 

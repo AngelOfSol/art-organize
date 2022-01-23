@@ -2,10 +2,11 @@ pub use self::piece::{Piece, PieceId};
 use super::{
     serialized::{
         blob::{Blob, BlobId, BlobType},
+        piece::{Piece as PieceV1, PieceId as PieceIdV1},
         tag::{Tag, TagId},
         tag_category::{Category, CategoryId},
     },
-    Db as DbV1,
+    DbV1,
 };
 use crate::table::Table;
 use crate::traits::{DeleteFrom, EditFrom, IdExist};
@@ -19,22 +20,19 @@ use std::{
 pub mod commands;
 pub mod piece;
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
-pub struct Db {}
-
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
-pub struct SerializedDb {
-    pieces: Table<Piece>,
-    blobs: Table<Blob>,
-    tags: Table<Tag>,
-    categories: Table<Category>,
+pub struct DbV2 {
+    pub pieces: Table<Piece>,
+    pub blobs: Table<Blob>,
+    pub tags: Table<Tag>,
+    pub categories: Table<Category>,
 
-    media: BTreeSet<(PieceId, BlobId)>,
-    piece_tags: BTreeSet<(PieceId, TagId)>,
-    tag_category: BTreeMap<TagId, CategoryId>,
+    pub media: BTreeSet<(PieceId, BlobId)>,
+    pub piece_tags: BTreeSet<(PieceId, TagId)>,
+    pub tag_category: BTreeMap<TagId, CategoryId>,
 }
 
-impl From<DbV1> for SerializedDb {
+impl From<DbV1> for DbV2 {
     fn from(value: DbV1) -> Self {
         Self {
             pieces: value
@@ -68,11 +66,7 @@ impl From<DbV1> for SerializedDb {
     }
 }
 
-// do two versions
-// one that serializes and uses numeric IDs (just reuse what already exists)
-// one that is used by the application and just has RCs
-
-impl SerializedDb {
+impl DbV2 {
     pub fn create_blob(&mut self, data: Blob) -> BlobId {
         self.blobs.insert(data)
     }

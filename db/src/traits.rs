@@ -1,5 +1,3 @@
-use crate::Db;
-
 mod delete;
 mod edit;
 mod exists;

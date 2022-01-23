@@ -1,6 +1,6 @@
 use db::{Db, Piece, PieceId};
 
-use crate::model::{Condition, DateOp, PriceOp, PriceType, Search};
+use crate::model::{Condition, DateOp, Search};
 
 impl Search {
     pub fn execute<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = PieceId> + 'a {
@@ -52,23 +52,9 @@ fn evaluate_test(test: &Condition, (id, piece): &(PieceId, &Piece), db: &Db) -> 
             // no category:tag of this name exist in the database
             Some(db.tags_for_piece(*id).any(|tag| tag == searched))
         }
-        Condition::Source(source) => Some(&piece.source_type == source),
-        Condition::Media(media) => Some(&piece.media_type == media),
         Condition::DateAdded(op, date) => Some(match op {
             DateOp::Before => &piece.added <= date,
             DateOp::After => &piece.added >= date,
         }),
-        Condition::Price(price, op, against) => {
-            let value = match price {
-                PriceType::Total => piece.tip_price.unwrap_or(0) + piece.base_price.unwrap_or(0),
-                PriceType::Tip => piece.tip_price.unwrap_or(0),
-                PriceType::Base => piece.base_price.unwrap_or(0),
-            };
-
-            Some(match op {
-                PriceOp::GreaterEqual => &value >= against,
-                PriceOp::LesserEqual => &value <= against,
-            })
-        }
     }
 }

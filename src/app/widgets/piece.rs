@@ -1,5 +1,5 @@
 use db::{
-    commands::{AttachTag, EditPiece},
+    v2::commands::{AttachTag, EditPiece},
     CategoryId, Db, Piece, PieceId, TagId,
 };
 use imgui::{im_str, Ui};
@@ -14,31 +14,12 @@ use itertools::Itertools;
 
 pub fn view(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
-    ui.text_wrapped(&im_str!("Name: {}", piece.name));
-    ui.text_wrapped(&im_str!("Source Type: {}", piece.source_type));
-    ui.text_wrapped(&im_str!("Media Type: {}", piece.media_type));
+    ui.text_wrapped(&im_str!("Description: {}", piece.description));
     date::view("Date Added", &piece.added, ui);
-
-    if let Some(price) = piece.base_price {
-        ui.text(im_str!("Price: ${}", price));
-    }
-    if let Some(price) = piece.tip_price {
-        ui.text(im_str!("Tipped: ${}", price));
-    }
 }
 pub fn tooltip(piece_id: PieceId, db: &Db, ui: &Ui<'_>) {
     let piece = &db[piece_id];
-    ui.text(&im_str!("Name: {}", piece.name));
-    ui.text(&im_str!("Source Type: {}", piece.source_type));
-    ui.text(&im_str!("Media Type: {}", piece.media_type));
     date::view("Date Added", &piece.added, ui);
-
-    if let Some(price) = piece.base_price {
-        ui.text(im_str!("Price: ${}", price));
-    }
-    if let Some(price) = piece.tip_price {
-        ui.text(im_str!("Tipped: ${}", price));
-    }
 }
 pub fn view_tags(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<(TagId, ItemViewResponse)> {
     for category_id in db
@@ -152,8 +133,8 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse
 
     let piece = &db[piece_id];
 
-    let mut buf = piece.name.clone().into();
-    ui.input_text(im_str!("Name"), &mut buf)
+    let mut buf = piece.description.clone().into();
+    ui.input_text(im_str!("Description"), &mut buf)
         .resize_buffer(true)
         .build();
 
@@ -161,27 +142,7 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse
         ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
             id: piece_id,
             data: Piece {
-                name: buf.to_string(),
-                ..piece.clone()
-            },
-        }));
-    }
-
-    if let Some(source_type) = enum_combo_box(ui, im_str!("Source Type"), &piece.source_type) {
-        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                source_type,
-                ..piece.clone()
-            },
-        }));
-    }
-
-    if let Some(media_type) = enum_combo_box(ui, im_str!("Media Type"), &piece.media_type) {
-        ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-            id: piece_id,
-            data: Piece {
-                media_type,
+                description: buf.to_string(),
                 ..piece.clone()
             },
         }));
@@ -195,65 +156,6 @@ pub fn edit(piece_id: PieceId, db: &Db, ui: &Ui<'_>) -> Option<EditPieceResponse
                 ..piece.clone()
             },
         }));
-    }
-
-    let mut buf = piece
-        .base_price
-        .map(|price| price.to_string())
-        .unwrap_or_else(String::new)
-        .into();
-
-    ui.input_text(im_str!("Price"), &mut buf)
-        .chars_decimal(true)
-        .resize_buffer(true)
-        .build();
-    if ui.is_item_deactivated_after_edit() {
-        if buf.is_empty() {
-            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    base_price: None,
-                    ..piece.clone()
-                },
-            }));
-        } else if let Ok(base_price) = buf.to_string().parse() {
-            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    base_price: Some(base_price),
-                    ..piece.clone()
-                },
-            }));
-        }
-    }
-
-    let mut buf = piece
-        .tip_price
-        .map(|price| price.to_string())
-        .unwrap_or_else(String::new)
-        .into();
-    ui.input_text(im_str!("Tip"), &mut buf)
-        .chars_decimal(true)
-        .resize_buffer(true)
-        .build();
-    if ui.is_item_deactivated_after_edit() {
-        if buf.is_empty() {
-            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    tip_price: None,
-                    ..piece.clone()
-                },
-            }));
-        } else if let Ok(tip_price) = buf.to_string().parse() {
-            ret.get_or_insert(EditPieceResponse::Edit(EditPiece {
-                id: piece_id,
-                data: Piece {
-                    tip_price: Some(tip_price),
-                    ..piece.clone()
-                },
-            }));
-        }
     }
 
     if ui.button(im_str!("Delete")) {

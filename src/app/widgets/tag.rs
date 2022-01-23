@@ -1,5 +1,5 @@
 use db::{
-    commands::{AttachCategory, EditTag},
+    v2::commands::{AttachCategory, EditTag},
     Db, Tag, TagId,
 };
 use imgui::{im_str, Selectable, StyleColor, Ui};

@@ -1,9 +1,9 @@
-use crate::{BlobId, CategoryId, Db, PieceId, TagId};
+use crate::{v2::DbV2, BlobId, CategoryId, TagId};
 
 use super::DeleteFrom;
 
-impl DeleteFrom<Db> for PieceId {
-    fn delete_from(self, db: &mut Db) -> bool {
+impl DeleteFrom<DbV2> for crate::v2::PieceId {
+    fn delete_from(self, db: &mut DbV2) -> bool {
         if db.exists(self) {
             db.pieces.remove(self);
             db.media.retain(|(piece, _)| *piece != self);
@@ -16,8 +16,8 @@ impl DeleteFrom<Db> for PieceId {
     }
 }
 
-impl DeleteFrom<Db> for BlobId {
-    fn delete_from(self, db: &mut Db) -> bool {
+impl DeleteFrom<DbV2> for BlobId {
+    fn delete_from(self, db: &mut DbV2) -> bool {
         if db.exists(self) {
             db.blobs.remove(self);
             db.media.retain(|(_, blob)| *blob != self);
@@ -28,8 +28,8 @@ impl DeleteFrom<Db> for BlobId {
     }
 }
 
-impl DeleteFrom<Db> for TagId {
-    fn delete_from(self, db: &mut Db) -> bool {
+impl DeleteFrom<DbV2> for TagId {
+    fn delete_from(self, db: &mut DbV2) -> bool {
         if db.exists(self) {
             db.tags.remove(self);
             db.piece_tags.retain(|(_, tag)| *tag != self);
@@ -41,8 +41,8 @@ impl DeleteFrom<Db> for TagId {
     }
 }
 
-impl DeleteFrom<Db> for CategoryId {
-    fn delete_from(self, db: &mut Db) -> bool {
+impl DeleteFrom<DbV2> for CategoryId {
+    fn delete_from(self, db: &mut DbV2) -> bool {
         if db.exists(self) {
             db.categories.remove(self);
             db.tag_category.retain(|_, tag| *tag != self);

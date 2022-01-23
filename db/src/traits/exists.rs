@@ -1,33 +1,33 @@
-use crate::{BlobId, CategoryId, Db, PieceId, TagId};
+use crate::{v2::DbV2, BlobId, CategoryId, DbV1, PieceId, TagId};
 
 use super::IdExist;
 
-impl IdExist<Db> for BlobId {
-    fn exists_in(self, db: &Db) -> bool {
+impl IdExist<DbV2> for BlobId {
+    fn exists_in(self, db: &DbV2) -> bool {
         db.blobs.has(self)
     }
 }
-impl IdExist<Db> for PieceId {
-    fn exists_in(self, db: &Db) -> bool {
+impl IdExist<DbV2> for crate::v2::PieceId {
+    fn exists_in(self, db: &DbV2) -> bool {
         db.pieces.has(self)
     }
 }
-impl IdExist<Db> for TagId {
-    fn exists_in(self, db: &Db) -> bool {
+impl IdExist<DbV2> for TagId {
+    fn exists_in(self, db: &DbV2) -> bool {
         db.tags.has(self)
     }
 }
-impl IdExist<Db> for CategoryId {
-    fn exists_in(self, db: &Db) -> bool {
+impl IdExist<DbV2> for CategoryId {
+    fn exists_in(self, db: &DbV2) -> bool {
         db.categories.has(self)
     }
 }
 
-impl<'a, T: Copy> IdExist<Db> for &'a T
+impl<'a, T: Copy> IdExist<DbV2> for &'a T
 where
-    T: IdExist<Db>,
+    T: IdExist<DbV2>,
 {
-    fn exists_in(self, db: &Db) -> bool {
+    fn exists_in(self, db: &DbV2) -> bool {
         db.exists(*self)
     }
 }

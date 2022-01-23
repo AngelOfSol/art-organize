@@ -1,4 +1,4 @@
-use db::{commands::EditBlob, Blob, BlobId, Db};
+use db::{v2::commands::EditBlob, Blob, BlobId, Db};
 use imgui::{im_str, ImStr, Ui};
 
 use crate::{

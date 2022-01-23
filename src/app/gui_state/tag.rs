@@ -37,7 +37,7 @@ impl GuiView for TagView {
             blob_ids,
             gui_handle,
             &gui_state.thumbnails,
-            |blob_id| &db[db.pieces_for_blob(blob_id).next().unwrap()].name,
+            |blob_id| &db[db.pieces_for_blob(blob_id).next().unwrap()].description,
             |blob_id| piece::tooltip(db.pieces_for_blob(blob_id).next().unwrap(), &db, ui),
         ) {
             let piece_id = db.pieces_for_blob(blob_id).next().unwrap();

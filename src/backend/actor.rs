@@ -6,8 +6,13 @@ use std::{
 };
 
 use db::{
-    commands::{AttachBlob, AttachCategory, AttachTag, EditBlob, EditCategory, EditPiece, EditTag},
-    BlobId, BlobType, Category, CategoryId, Db, Piece, PieceId, Tag, TagId,
+    v2::commands::{
+        AttachBlob, AttachCategory, AttachTag, EditBlob, EditCategory, EditPiece, EditTag,
+    },
+    v2::DbV2 as Db,
+    v2::Piece,
+    v2::PieceId,
+    BlobId, BlobType, Category, CategoryId, Tag, TagId,
 };
 use futures_util::{stream::FuturesUnordered, StreamExt};
 use itertools::Itertools;

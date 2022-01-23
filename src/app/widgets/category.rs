@@ -1,4 +1,4 @@
-use db::{commands::EditCategory, Category, CategoryId, Db};
+use db::{v2::commands::EditCategory, Category, CategoryId, Db};
 use imgui::{
     im_str, ColorEdit, ColorEditDisplayMode, ColorEditInputMode, Selectable, StyleColor, Ui,
 };

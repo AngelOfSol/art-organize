@@ -5,7 +5,7 @@ use std::{
 
 use tokio::fs;
 
-use db::{BlobId, Db};
+use db::{v2::DbV2 as Db, BlobId, Db as DbV1};
 
 pub mod actor;
 
@@ -13,7 +13,6 @@ use crate::undo::UndoStack;
 
 #[derive(Clone, Debug)]
 pub struct DbBackend {
-    // -> Option<PathBuf>
     pub root: PathBuf,
     pub inner: UndoStack<Db>,
 }
@@ -47,15 +46,14 @@ impl DbBackend {
     }
 
     pub async fn from_directory(root: PathBuf) -> anyhow::Result<Self> {
-        let db = bincode::deserialize::<Db>(&fs::read(data_file(root.clone())).await?)?;
-        Ok(Self {
-            root,
-            inner: UndoStack::new(db),
-        })
+        Self::from_file(data_file(root.clone())).await
     }
 
     pub async fn from_file(mut root: PathBuf) -> anyhow::Result<Self> {
-        let db = bincode::deserialize::<Db>(&fs::read(root.clone()).await?)?;
+        let data = &fs::read(root.clone()).await?;
+        let db = bincode::deserialize::<DbV1>(data)
+            .map(|item| item.into())
+            .or_else(|_| bincode::deserialize::<Db>(data))?;
         root.pop();
         Ok(Self {
             root,
