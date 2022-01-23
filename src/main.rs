@@ -7,29 +7,22 @@ use std::{
 };
 
 use anyhow::bail;
-use app::{
-    gui_state::{start_gui_task, GuiState},
-    App,
-};
 use backend::{actor::start_db_task, DbBackend};
 use clap::Clap;
 use cli::SubCommand;
 use config::Config;
-use gui::{run_event_loop, GuiContext};
 use rfd::{AsyncFileDialog, AsyncMessageDialog, MessageButtons, MessageLevel};
 use tokio::runtime::Builder;
 use winit::event_loop::EventLoop;
 
-mod app;
 mod backend;
 mod cli;
 mod config;
 mod consts;
-mod gui;
+mod egui_app;
+mod frontend;
 mod layout;
 mod loaders;
-mod raw_image;
-mod style;
 mod undo;
 mod updater;
 
@@ -109,8 +102,8 @@ async fn run_gui(mut config: Config) -> anyhow::Result<()> {
     let (outgoing_files, app) = create_app(root).await?;
 
     let event_loop = EventLoop::new();
-    let gui = GuiContext::create(&event_loop).await?;
-    run_event_loop(event_loop, gui, outgoing_files, app);
+
+    egui_app::main().await;
     Ok(())
 }
 
@@ -137,8 +130,7 @@ async fn ask_for_startup_folder() -> anyhow::Result<PathBuf> {
     }
 }
 
-async fn create_app(root: PathBuf) -> anyhow::Result<(mpsc::Sender<std::path::PathBuf>, App)> {
-    let (outgoing_images, rx) = mpsc::channel();
+async fn create_app(root: PathBuf) -> anyhow::Result<(mpsc::Sender<std::path::PathBuf>, ())> {
     let (outgoing_files, incoming_files) = mpsc::channel();
     let db = Arc::new(RwLock::new({
         match DbBackend::from_directory(root.clone()).await {
@@ -150,18 +142,7 @@ async fn create_app(root: PathBuf) -> anyhow::Result<(mpsc::Sender<std::path::Pa
             }
         }
     }));
-    let gui_state = Arc::new(RwLock::new(GuiState::default()));
     let db_handle = start_db_task(db);
-    let gui_handle = start_gui_task(
-        db_handle,
-        gui_state.clone(),
-        outgoing_images,
-        incoming_files,
-    );
-    let app = App {
-        incoming_images: rx,
-        gui_handle,
-        gui_state,
-    };
-    Ok((outgoing_files, app))
+
+    Ok((outgoing_files, ()))
 }
