@@ -5,7 +5,7 @@ use std::{
 
 use tokio::fs;
 
-use db::{v2::DbV2 as Db, BlobId, Db as DbV1};
+use db::{v2::DbV2 as Db, BlobId, DbV1};
 
 pub mod actor;
 
