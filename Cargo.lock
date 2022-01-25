@@ -90,7 +90,6 @@ dependencies = [
  "egui_demo_lib",
  "egui_wgpu_backend",
  "egui_winit_platform",
- "epi",
  "futures-util",
  "glam",
  "image",

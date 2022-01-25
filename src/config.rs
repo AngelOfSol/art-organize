@@ -9,16 +9,11 @@ lazy_static! {
         ProjectDirs::from("com", "aos-studios", "ArtOrganize").unwrap();
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Config {
     pub default_dir: Option<PathBuf>,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self { default_dir: None }
-    }
-}
 fn get_file() -> PathBuf {
     let mut config_file = PROJECT.config_dir().to_path_buf();
     config_file.push("config.toml");

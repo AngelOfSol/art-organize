@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use slab::Slab;
 use std::{
-    collections::BTreeMap, fmt::Display, iter::FromIterator, marker::PhantomData, ops::Index,
+    collections::BTreeMap, fmt::Display, hash::Hash, iter::FromIterator, marker::PhantomData,
+    ops::Index,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,6 +49,12 @@ impl<T> PartialOrd for TableId<T> {
 impl<T> Ord for TableId<T> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.0.cmp(&other.0)
+    }
+}
+
+impl<T> Hash for TableId<T> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
     }
 }
 

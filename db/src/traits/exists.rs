@@ -1,4 +1,4 @@
-use crate::{v2::DbV2, BlobId, CategoryId, DbV1, PieceId, TagId};
+use crate::{v2::DbV2, BlobId, CategoryId, TagId};
 
 use super::IdExist;
 

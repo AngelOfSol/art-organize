@@ -1,13 +1,12 @@
 use crate::model::{Condition, DateOp, Search};
 use chrono::NaiveDate;
-use db::{MediaType, SourceType};
 use nom::{
     branch::alt,
     bytes::complete::{self, tag},
     character::complete::space1,
     combinator::{map, map_opt, verify},
     multi::separated_list1,
-    sequence::{preceded, separated_pair, terminated, tuple},
+    sequence::{preceded, separated_pair, terminated},
     IResult,
 };
 

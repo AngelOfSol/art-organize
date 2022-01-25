@@ -6,12 +6,8 @@ pub use self::serialized::{
     tag_category::{Category, CategoryId},
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::PathBuf,
-};
+use std::collections::{BTreeMap, BTreeSet};
 use table::Table;
-use traits::{DeleteFrom, EditFrom, IdExist};
 
 mod serialized;
 mod table;

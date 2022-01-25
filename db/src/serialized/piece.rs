@@ -1,10 +1,6 @@
-use crate::table::TableId;
-
 use super::{media_type::MediaType, source_type::SourceType};
 use chrono::{Local, NaiveDate};
 use serde::{Deserialize, Serialize};
-
-pub type PieceId = TableId<Piece>;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Piece {

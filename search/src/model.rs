@@ -1,5 +1,4 @@
 use chrono::NaiveDate;
-use db::{MediaType, SourceType};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Search {
     Or(Vec<Search>),

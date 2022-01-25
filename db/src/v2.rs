@@ -2,7 +2,6 @@ pub use self::piece::{Piece, PieceId};
 use super::{
     serialized::{
         blob::{Blob, BlobId, BlobType},
-        piece::{Piece as PieceV1, PieceId as PieceIdV1},
         tag::{Tag, TagId},
         tag_category::{Category, CategoryId},
     },
@@ -102,50 +101,50 @@ impl DbV2 {
         self.categories.insert(data)
     }
 
-    pub fn blobs_for_piece(&self, piece: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
+    pub fn blobs_for_piece(&self, piece_id: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
         self.media
             .iter()
-            .filter(move |(id, _)| id == &piece)
+            .filter(move |(id, _)| id == &piece_id)
             .map(|(_, id)| *id)
     }
-    pub fn pieces_for_blob(&self, blob: BlobId) -> impl Iterator<Item = PieceId> + Clone + '_ {
+    pub fn pieces_for_blob(&self, blob_id: BlobId) -> impl Iterator<Item = PieceId> + Clone + '_ {
         self.media
             .iter()
-            .filter(move |(_, id)| id == &blob)
+            .filter(move |(_, id)| id == &blob_id)
             .map(|(id, _)| *id)
     }
 
-    pub fn primary_blob_for_piece(&self, piece: PieceId) -> Option<BlobId> {
-        self.blobs_for_piece(piece)
+    pub fn primary_blob_for_piece(&self, piece_id: PieceId) -> Option<BlobId> {
+        self.blobs_for_piece(piece_id)
             .find(|blob_id| self.blobs[*blob_id].blob_type == BlobType::Canon)
     }
 
-    pub fn tags_for_piece(&self, piece: PieceId) -> impl Iterator<Item = TagId> + Clone + '_ {
+    pub fn tags_for_piece(&self, piece_id: PieceId) -> impl Iterator<Item = TagId> + Clone + '_ {
         self.piece_tags
             .iter()
-            .filter(move |(id, _)| id == &piece)
+            .filter(move |(id, _)| id == &piece_id)
             .map(|(_, id)| *id)
     }
 
-    pub fn pieces_for_tag(&self, tag: TagId) -> impl Iterator<Item = PieceId> + Clone + '_ {
+    pub fn pieces_for_tag(&self, tag_id: TagId) -> impl Iterator<Item = PieceId> + Clone + '_ {
         self.piece_tags
             .iter()
-            .filter(move |(_, id)| id == &tag)
+            .filter(move |(_, id)| id == &tag_id)
             .map(|(id, _)| *id)
     }
 
     pub fn tags_for_category(
         &self,
-        category: CategoryId,
+        category_id: CategoryId,
     ) -> impl Iterator<Item = TagId> + Clone + '_ {
         self.tag_category
             .iter()
-            .filter(move |(_, id)| **id == category)
+            .filter(move |(_, id)| **id == category_id)
             .map(|(id, _)| *id)
     }
 
-    pub fn category_for_tag(&self, tag: TagId) -> Option<CategoryId> {
-        self.tag_category.get(&tag).copied()
+    pub fn category_for_tag(&self, tag_id: TagId) -> Option<CategoryId> {
+        self.tag_category.get(&tag_id).copied()
     }
 
     pub fn pieces(&self) -> impl Iterator<Item = (PieceId, &'_ Piece)> {

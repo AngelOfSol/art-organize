@@ -4,31 +4,18 @@ use std::time::Instant;
 use egui::FontDefinitions;
 use egui_wgpu_backend::{RenderPass, ScreenDescriptor};
 use egui_winit_platform::{Platform, PlatformDescriptor};
-use epi::*;
 use winit::event::Event::*;
 use winit::event_loop::ControlFlow;
 
-use crate::frontend::Frontend;
+use crate::{
+    backend::DbBackend,
+    frontend::{texture_storage::TextureStorage, Frontend},
+};
 const INITIAL_WIDTH: u32 = 1920;
 const INITIAL_HEIGHT: u32 = 1080;
 
-/// A custom event type for the winit app.
-enum Event {
-    RequestRedraw,
-}
-
-/// This is the repaint signal type that egui needs for requesting a repaint from another thread.
-/// It sends the custom RequestRedraw event to the winit event loop.
-struct ExampleRepaintSignal(std::sync::Mutex<winit::event_loop::EventLoopProxy<Event>>);
-
-impl epi::backend::RepaintSignal for ExampleRepaintSignal {
-    fn request_repaint(&self) {
-        self.0.lock().unwrap().send_event(Event::RequestRedraw).ok();
-    }
-}
-
 /// A simple egui + wgpu + winit based example.
-pub async fn main() {
+pub async fn main(mut db: DbBackend) {
     let event_loop = winit::event_loop::EventLoop::with_user_event();
     let window = winit::window::WindowBuilder::new()
         .with_decorations(true)
@@ -59,7 +46,10 @@ pub async fn main() {
         .request_device(
             &wgpu::DeviceDescriptor {
                 features: wgpu::Features::default(),
-                limits: wgpu::Limits::default(),
+                limits: wgpu::Limits {
+                    max_texture_dimension_2d: 24000,
+                    ..wgpu::Limits::default()
+                },
                 label: None,
             },
             None,
@@ -78,10 +68,6 @@ pub async fn main() {
     };
     surface.configure(&device, &surface_config);
 
-    let repaint_signal = std::sync::Arc::new(ExampleRepaintSignal(std::sync::Mutex::new(
-        event_loop.create_proxy(),
-    )));
-
     // We use the egui_winit_platform crate as the platform.
     let mut platform = Platform::new(PlatformDescriptor {
         physical_width: size.width as u32,
@@ -94,11 +80,12 @@ pub async fn main() {
     // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
+    let thumbnails = TextureStorage::new();
+
     // Display the demo application that ships with egui.
-    let mut frontend = Frontend {};
+    let mut frontend = Frontend::new(thumbnails.clone());
 
     let start_time = Instant::now();
-    let mut previous_frame_time = None;
     event_loop.run(move |event, _, control_flow| {
         // Pass the winit events to the platform integration.
         platform.handle_event(&event);
@@ -125,31 +112,20 @@ pub async fn main() {
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
                 // Begin to draw the UI frame.
-                let egui_start = Instant::now();
                 platform.begin_frame();
-                let app_output = epi::backend::AppOutput::default();
 
-                let mut frame = epi::Frame::new(epi::backend::FrameData {
-                    info: epi::IntegrationInfo {
-                        name: "egui_example",
-                        web_info: None,
-                        cpu_usage: previous_frame_time,
-                        native_pixels_per_point: Some(window.scale_factor() as _),
-                        prefer_dark_mode: None,
-                    },
-                    output: app_output,
-                    repaint_signal: repaint_signal.clone(),
-                });
-
+                let update_time = Instant::now();
                 // Draw the demo application.
-                frontend.update(&platform.context(), &mut frame);
+                frontend.update(&mut db, &platform.context());
+
+                let update_time = (Instant::now() - update_time).as_millis();
+                if update_time > 10 {
+                    println!("frontend: {}ms", update_time);
+                }
 
                 // End the UI frame. We could now handle the output and draw the UI with the backend.
                 let (_output, paint_commands) = platform.end_frame(Some(&window));
                 let paint_jobs = platform.context().tessellate(paint_commands);
-
-                let frame_time = (Instant::now() - egui_start).as_secs_f64() as f32;
-                previous_frame_time = Some(frame_time);
 
                 let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("encoder"),
@@ -161,6 +137,11 @@ pub async fn main() {
                     physical_height: surface_config.height,
                     scale_factor: window.scale_factor() as f32,
                 };
+
+                if let Ok(mut thumbnails) = thumbnails.inner.try_lock() {
+                    thumbnails.create_textures(&mut egui_rpass, &queue, &device);
+                }
+
                 egui_rpass.update_texture(&device, &queue, &platform.context().font_image());
                 egui_rpass.update_user_textures(&device, &queue);
                 egui_rpass.update_buffers(&device, &queue, &paint_jobs, &screen_descriptor);
@@ -188,7 +169,7 @@ pub async fn main() {
                 //     *control_flow = ControlFlow::Wait;
                 // }
             }
-            MainEventsCleared | UserEvent(Event::RequestRedraw) => {
+            MainEventsCleared | UserEvent(()) => {
                 window.request_redraw();
             }
             WindowEvent { event, .. } => match event {

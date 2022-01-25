@@ -1,27 +1,20 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{
-    path::PathBuf,
-    sync::{mpsc, Arc, RwLock},
-    time::Duration,
-};
+use std::{path::PathBuf, time::Duration};
 
 use anyhow::bail;
-use backend::{actor::start_db_task, DbBackend};
+use backend::DbBackend;
 use clap::Clap;
 use cli::SubCommand;
 use config::Config;
 use rfd::{AsyncFileDialog, AsyncMessageDialog, MessageButtons, MessageLevel};
 use tokio::runtime::Builder;
-use winit::event_loop::EventLoop;
 
 mod backend;
 mod cli;
 mod config;
-mod consts;
 mod egui_app;
 mod frontend;
-mod layout;
 mod loaders;
 mod undo;
 mod updater;
@@ -99,11 +92,7 @@ async fn run_gui(mut config: Config) -> anyhow::Result<()> {
         }
     };
 
-    let (outgoing_files, app) = create_app(root).await?;
-
-    let event_loop = EventLoop::new();
-
-    egui_app::main().await;
+    egui_app::main(DbBackend::from_directory(root).await?).await;
     Ok(())
 }
 
@@ -128,21 +117,4 @@ async fn ask_for_startup_folder() -> anyhow::Result<PathBuf> {
             break Ok(item.path().to_path_buf());
         }
     }
-}
-
-async fn create_app(root: PathBuf) -> anyhow::Result<(mpsc::Sender<std::path::PathBuf>, ())> {
-    let (outgoing_files, incoming_files) = mpsc::channel();
-    let db = Arc::new(RwLock::new({
-        match DbBackend::from_directory(root.clone()).await {
-            Ok(value) => value,
-            Err(_) => {
-                let backend = DbBackend::init_at_directory(root.clone()).await?;
-                backend.save().await?;
-                backend
-            }
-        }
-    }));
-    let db_handle = start_db_task(db);
-
-    Ok((outgoing_files, ()))
 }
