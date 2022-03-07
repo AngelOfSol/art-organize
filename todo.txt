@@ -150,3 +150,11 @@ x allow user to add contextual shell commands via the settings screen
 - add config/settings info to allow user to change style
 - think about removing media type?
 - markdown renderer
+
+
+[x] move to egui
+[] change filing system
+    [] no more types
+    [] add source_id tags for skeb
+[] create inbox system (viewing folders / skeb http request)
+[] add id field

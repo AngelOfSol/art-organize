@@ -9,6 +9,8 @@ pub type PieceId = TableId<Piece>;
 pub struct Piece {
     pub description: String,
     pub added: NaiveDate,
+    pub base_price: Option<i64>,
+    pub tip_price: Option<i64>,
 }
 
 impl Default for Piece {
@@ -16,6 +18,8 @@ impl Default for Piece {
         Self {
             description: String::new(),
             added: Local::today().naive_local(),
+            base_price: None,
+            tip_price: None,
         }
     }
 }

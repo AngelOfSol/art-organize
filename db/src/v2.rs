@@ -43,6 +43,8 @@ impl From<DbV1> for DbV2 {
                         Piece {
                             description: value.name.clone(),
                             added: value.added,
+                            base_price: value.base_price,
+                            tip_price: value.tip_price,
                         },
                     )
                 })

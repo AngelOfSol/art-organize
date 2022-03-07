@@ -1,0 +1,36 @@
+skeb learnings
+
+https://skeb.jp/api/requests?role=client&status=complete&sort=date&offset=0
+gives all of the requests for the current client, at 30 a page
+
+each item has a bunch of info, starting with an ID identifying which work it is
+
+we can request a download of an attachment with the following payload against the work
+
+https://skeb.jp/api/requests/{$work_id}/download
+
+payload:
+```
+{
+    attachment_id: {$attachment_id},
+    type: "original" | "converted",
+}
+```
+
+we need to provide the skeb token in our initial request
+
+as part of the request header:
+```
+authorization: Bearer {$token}
+referer: https://skeb.jp/requests
+```
+
+our payload should be:
+```
+role: client
+status: complete
+sort: date
+offset: 0
+```
+
+we'll have to go acquire the token manually through localStorage

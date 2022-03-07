@@ -34,16 +34,15 @@ impl TextureStorage {
                 let inner = self.inner.clone();
                 let storage = db.storage_for(blob_id);
                 tokio::spawn(async move {
-                    let x = async {
+                    let load_result = async {
                         let image_data = tokio::fs::read(storage).await?;
                         use image::GenericImageView as _;
                         let image = image::load_from_memory(&image_data)?;
 
-                        let image = FontImage {
-                            version: 0,
-                            width: image.width() as usize,
-                            height: image.height() as usize,
-                            pixels: image.to_rgba8().to_vec(),
+                        let image = RawImage {
+                            width: image.width(),
+                            height: image.height(),
+                            data: image.to_rgba8().to_vec(),
                         };
 
                         let inner = inner.lock();
@@ -61,8 +60,8 @@ impl TextureStorage {
                         anyhow::Result::<()>::Ok(())
                     }
                     .await;
-                    if x.is_err() {
-                        let _ = dbg!(x);
+                    if load_result.is_err() {
+                        let _ = dbg!(load_result);
                     }
                 });
             }
@@ -74,8 +73,15 @@ impl TextureStorage {
 
 pub struct TextureStorageHandle {
     loading: BTreeSet<BlobId>,
-    loaded: BTreeMap<BlobId, FontImage>,
+    loaded: BTreeMap<BlobId, RawImage>,
     data: BTreeMap<BlobId, Image>,
+}
+
+#[derive(Clone, Debug)]
+pub struct RawImage {
+    pub data: Vec<u8>,
+    pub width: u32,
+    pub height: u32,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -122,8 +128,8 @@ impl TextureStorageHandle {
                 &TextureDescriptor {
                     label: None,
                     size: Extent3d {
-                        width: image.width as u32,
-                        height: image.height as u32,
+                        width: image.width,
+                        height: image.height,
                         depth_or_array_layers: 1,
                     },
                     mip_level_count: 1,
@@ -132,7 +138,7 @@ impl TextureStorageHandle {
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                 },
-                &image.pixels,
+                &image.data,
             );
             let texture_id = egui_rpass.egui_texture_from_wgpu_texture(
                 device,
