@@ -41,6 +41,7 @@ impl From<DbV1> for DbV2 {
                     (
                         usize::from(id),
                         Piece {
+                            external_id: None,
                             description: value.name.clone(),
                             added: value.added,
                             base_price: value.base_price,

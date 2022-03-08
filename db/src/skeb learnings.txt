@@ -34,3 +34,23 @@ offset: 0
 ```
 
 we'll have to go acquire the token manually through localStorage
+
+```Rust
+let client = reqwest::Client::new();
+
+    let request = client
+        .get("https://skeb.jp/api/requests?role=client&status=complete&sort=date&offset=0")
+        .bearer_auth("eyJhbGciOiJSUzI1NiJ9.eyJkYXRhIjp7fSwic3ViIjoyNjM0NTMsImlzcyI6Imh0dHBzOi8vc2tlYi5qcCIsImlhdCI6MTY0NjYzNjE3NiwiZXhwIjoxNjQ5MjI4MTc2LCJhdWQiOiJwcm9kdWN0aW9uLTEifQ.pyo8XMKkI2PIQ94iirKnaOgyyhkk5C8KYrdi4jGpdV9wio76W6RDErbmu9FzjhIOL8f6zH3VivGZJlAmMwHq2oLhTZ13NtHPB--3IbJpnZtlQ_g_PQd59V4EvVZIVVU45m6mMHALGgELnz9_6q5QG-dYqQBpfGSvoyQmy-2bHXqn1WEwEHU_CXkKhscUL72RZzVvEKh54O-8zi2by2PGo2JDpF1atK3EAyqV-Pc57ZoBWHOKSx611avXI21_jVRrt72l5YwUV43FOWdjBwy2aKMy9VQhNixJVHNCSN4BQ3KoeQH-nBEKNsXTjwNPo0iO7YfVKlczjU3HJWQOlqgJsQ")
+        .build()
+        .unwrap();
+
+    let result = client
+        .execute(request)
+        .await
+        .unwrap()
+        .json::<Vec<JsonResult>>()
+        .await
+        .unwrap();
+
+    dbg!(result);
+    ```

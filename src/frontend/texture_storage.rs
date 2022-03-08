@@ -1,7 +1,8 @@
 use db::BlobId;
-use egui::{FontImage, TextureId};
+use egui::TextureId;
 use std::{
     collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 use wgpu::{util::DeviceExt, Device, Extent3d, Queue, TextureDescriptor};
@@ -13,68 +14,115 @@ pub struct TextureStorage {
     pub inner: Arc<Mutex<TextureStorageHandle>>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum ImageStatus {
+    Loading,
+    Unavailable,
+    Available(Image),
+}
+
 impl TextureStorage {
     pub fn new() -> Self {
         TextureStorage {
             inner: Arc::new(Mutex::new(TextureStorageHandle {
                 loading: Default::default(),
                 loaded: Default::default(),
-                data: Default::default(),
+                image: Default::default(),
+                thumbnail: Default::default(),
+                unavailable: Default::default(),
             })),
         }
     }
 
-    pub fn get(&self, blob_id: BlobId, db: &DbBackend) -> Option<Image> {
-        let mut inner = self.inner.try_lock().ok()?;
+    pub fn image_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
+        let mut inner = if let Ok(inner) = self.inner.try_lock() {
+            inner
+        } else {
+            return ImageStatus::Loading;
+        };
 
-        if let image @ Some(_) = inner.data.get(&blob_id).copied() {
-            image
+        if let Some(image) = inner.image.get(&blob_id).copied() {
+            ImageStatus::Available(image)
+        } else if inner.unavailable.contains(&blob_id) {
+            ImageStatus::Unavailable
         } else {
             if inner.loading.insert(blob_id) {
                 let inner = self.inner.clone();
                 let storage = db.storage_for(blob_id);
-                tokio::spawn(async move {
-                    let load_result = async {
-                        let image_data = tokio::fs::read(storage).await?;
-                        use image::GenericImageView as _;
-                        let image = image::load_from_memory(&image_data)?;
-
-                        let image = RawImage {
-                            width: image.width(),
-                            height: image.height(),
-                            data: image.to_rgba8().to_vec(),
-                        };
-
-                        let inner = inner.lock();
-
-                        if inner.is_err() {
-                            dbg!(unsafe { inner.unwrap_err_unchecked() });
-                            return Ok(());
-                        }
-
-                        let mut inner = inner.unwrap();
-
-                        inner.loading.remove(&blob_id);
-                        inner.loaded.insert(blob_id, image);
-
-                        anyhow::Result::<()>::Ok(())
-                    }
-                    .await;
-                    if load_result.is_err() {
-                        let _ = dbg!(load_result);
-                    }
-                });
+                tokio::spawn(load(blob_id, storage, inner));
             }
 
-            None
+            ImageStatus::Loading
+        }
+    }
+
+    pub fn thumbnail_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
+        let mut inner = if let Ok(inner) = self.inner.try_lock() {
+            inner
+        } else {
+            return ImageStatus::Loading;
+        };
+
+        if let Some(image) = inner.thumbnail.get(&blob_id).copied() {
+            ImageStatus::Available(image)
+        } else if inner.unavailable.contains(&blob_id) {
+            ImageStatus::Unavailable
+        } else {
+            if inner.loading.insert(blob_id) {
+                let inner = self.inner.clone();
+                let storage = db.storage_for(blob_id);
+                tokio::spawn(load(blob_id, storage, inner));
+            }
+
+            ImageStatus::Loading
         }
     }
 }
 
+async fn load(blob_id: BlobId, storage: PathBuf, inner: Arc<Mutex<TextureStorageHandle>>) {
+    let _load_result = async {
+        let image_data = tokio::fs::read(storage).await?;
+        use image::GenericImageView as _;
+        let image = if let Ok(image) = image::load_from_memory(&image_data) {
+            image
+        } else {
+            let mut inner = inner.lock().unwrap();
+
+            inner.loading.remove(&blob_id);
+            inner.unavailable.insert(blob_id);
+
+            return Ok(());
+        };
+
+        let thumbnail = image.thumbnail(256, 256);
+        let thumbnail = RawImage {
+            width: thumbnail.width(),
+            height: thumbnail.height(),
+            data: thumbnail.to_rgba8().to_vec(),
+        };
+
+        let image = RawImage {
+            width: image.width(),
+            height: image.height(),
+            data: image.to_rgba8().to_vec(),
+        };
+
+        let mut inner = inner.lock().unwrap();
+
+        inner.loading.remove(&blob_id);
+        inner.loaded.insert(blob_id, (thumbnail, image));
+
+        anyhow::Result::<()>::Ok(())
+    }
+    .await;
+}
+
 pub struct TextureStorageHandle {
     loading: BTreeSet<BlobId>,
-    loaded: BTreeMap<BlobId, RawImage>,
-    data: BTreeMap<BlobId, Image>,
+    loaded: BTreeMap<BlobId, (RawImage, RawImage)>,
+    unavailable: BTreeSet<BlobId>,
+    image: BTreeMap<BlobId, Image>,
+    thumbnail: BTreeMap<BlobId, Image>,
 }
 
 #[derive(Clone, Debug)]
@@ -122,39 +170,54 @@ impl TextureStorageHandle {
     ) {
         let loaded = std::mem::take(&mut self.loaded);
 
-        for (blob_id, image) in loaded {
-            let texture = device.create_texture_with_data(
-                queue,
-                &TextureDescriptor {
-                    label: None,
-                    size: Extent3d {
-                        width: image.width,
-                        height: image.height,
-                        depth_or_array_layers: 1,
-                    },
-                    mip_level_count: 1,
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                },
-                &image.data,
-            );
-            let texture_id = egui_rpass.egui_texture_from_wgpu_texture(
-                device,
-                &texture,
-                wgpu::FilterMode::Nearest,
-            );
+        for (blob_id, (thumbnail, image)) in loaded {
+            let image_texture_id = make_texture(device, queue, &image, egui_rpass);
+            let thumbnail_texture_id = make_texture(device, queue, &thumbnail, egui_rpass);
 
             self.loading.remove(&blob_id);
-            self.data.insert(
+            self.image.insert(
                 blob_id,
                 Image {
-                    id: texture_id,
+                    id: image_texture_id,
+                    width: image.width as u32,
+                    height: image.height as u32,
+                },
+            );
+            self.thumbnail.insert(
+                blob_id,
+                Image {
+                    id: thumbnail_texture_id,
                     width: image.width as u32,
                     height: image.height as u32,
                 },
             );
         }
     }
+}
+
+fn make_texture(
+    device: &Device,
+    queue: &Queue,
+    image: &RawImage,
+    egui_rpass: &mut egui_wgpu_backend::RenderPass,
+) -> TextureId {
+    let texture = device.create_texture_with_data(
+        queue,
+        &TextureDescriptor {
+            label: None,
+            size: Extent3d {
+                width: image.width,
+                height: image.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8UnormSrgb,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        },
+        &image.data,
+    );
+
+    egui_rpass.egui_texture_from_wgpu_texture(device, &texture, wgpu::FilterMode::Linear)
 }
