@@ -34,12 +34,11 @@ pub fn data_file(mut path: PathBuf) -> PathBuf {
 }
 
 impl DbBackend {
-    pub async fn save(&self) -> anyhow::Result<()> {
-        fs::write(
+    pub fn save(&self) -> anyhow::Result<()> {
+        std::fs::write(
             data_file(self.root.clone()),
             bincode::serialize::<Db>(self)?,
-        )
-        .await?;
+        )?;
         Ok(())
     }
 

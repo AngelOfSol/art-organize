@@ -1,6 +1,6 @@
 use db::{BlobId, PieceId, TagId};
 use egui::{
-    Button, CentralPanel, Color32, Frame, ImageButton, Label, Layout, PointerButton, RichText,
+    Button, CentralPanel, Color32, Frame, ImageButton, Key, Label, Layout, PointerButton, RichText,
     ScrollArea, Sense, SidePanel, TopBottomPanel, Vec2, Window,
 };
 use egui_demo_lib::easy_mark::{self, easy_mark, EasyMarkEditor};
@@ -40,9 +40,24 @@ impl Frontend {
 }
 
 impl Frontend {
-    pub fn update(&mut self, db: &mut DbBackend, ctx: &egui::CtxRef) {
+    pub fn update(&mut self, db: &mut DbBackend, ctx: &egui::CtxRef, quit: &mut bool) {
         TopBottomPanel::top("menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
+                ui.menu_button("File", |ui| {
+                    if ui.button("Save").clicked() {
+                        db.save().unwrap();
+                        ui.close_menu();
+                    }
+                    if ui.button("Load").clicked() {
+                        ui.close_menu();
+                    }
+                    ui.separator();
+                    if ui.button("Quit").clicked() {
+                        *quit = true;
+                        ui.close_menu()
+                    }
+                });
+                ui.separator();
                 let mut pop_to = None;
                 for (idx, mode) in self.history.iter().enumerate() {
                     let last = idx == self.history.len() - 1;
@@ -60,7 +75,7 @@ impl Frontend {
                     }
 
                     if !last {
-                        ui.separator();
+                        ui.label(">");
                     }
                 }
                 if let Some(pop_to) = pop_to {
@@ -170,7 +185,13 @@ impl Frontend {
 
                     ui.columns(2, |ui| {
                         let piece = db.pieces.get_mut(piece_id).unwrap();
-                        ui[0].vertical(|ui| easy_mark_editor(ui, &mut piece.description));
+                        ui[0].vertical(|ui| {
+                            ui.text_edit_singleline(
+                                &mut piece.tip_price.unwrap_or_default().to_string(),
+                            );
+                            ui.separator();
+                            easy_mark_editor(ui, &mut piece.description)
+                        });
                         ui[1].vertical(|ui| {
                             piece_info_panel(db, piece_id, ui);
                         });

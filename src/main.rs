@@ -66,7 +66,7 @@ async fn async_main() -> anyhow::Result<()> {
                 config.save().unwrap();
 
                 let backend = DbBackend::init_at_directory(root).await?;
-                backend.save().await?;
+                backend.save()?;
             }
             SubCommand::ResetConfig => {
                 config = Config::default();

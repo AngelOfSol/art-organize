@@ -110,16 +110,22 @@ pub async fn main(mut db: DbBackend) {
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
                 // Begin to draw the UI frame.
+
                 platform.begin_frame();
 
-                let update_time = Instant::now();
+                // let update_time = Instant::now();
                 // Draw the demo application.
-                frontend.update(&mut db, &platform.context());
+                let mut quit = false;
+                frontend.update(&mut db, &platform.context(), &mut quit);
 
-                let update_time = (Instant::now() - update_time).as_millis();
-                if update_time > 10 {
-                    println!("frontend: {}ms", update_time);
+                if quit {
+                    *control_flow = ControlFlow::Exit;
                 }
+
+                // let update_time = (Instant::now() - update_time).as_millis();
+                // if update_time > 10 {
+                //     println!("frontend: {}ms", update_time);
+                // }
 
                 // End the UI frame. We could now handle the output and draw the UI with the backend.
                 let (_output, paint_commands) = platform.end_frame(Some(&window));
