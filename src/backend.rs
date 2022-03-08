@@ -9,16 +9,14 @@ use db::{v2::DbV2 as Db, BlobId, DbV1};
 
 pub mod actor;
 
-use crate::undo::UndoStack;
-
 #[derive(Clone, Debug)]
 pub struct DbBackend {
     pub root: PathBuf,
-    pub inner: UndoStack<Db>,
+    pub inner: Db,
 }
 
 impl Deref for DbBackend {
-    type Target = UndoStack<Db>;
+    type Target = Db;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
@@ -55,18 +53,12 @@ impl DbBackend {
             .map(|item| item.into())
             .or_else(|_| bincode::deserialize::<Db>(data))?;
         root.pop();
-        Ok(Self {
-            root,
-            inner: UndoStack::new(db),
-        })
+        Ok(Self { root, inner: db })
     }
 
     pub async fn init_at_directory(root: PathBuf) -> anyhow::Result<Self> {
         let db = Db::default();
-        let ret = Self {
-            root,
-            inner: UndoStack::new(db),
-        };
+        let ret = Self { root, inner: db };
 
         Ok(ret)
     }

@@ -9,7 +9,7 @@ use winit::event_loop::ControlFlow;
 
 use crate::{
     backend::DbBackend,
-    frontend::{texture_storage::TextureStorage, Frontend},
+    frontend::{texture_storage::TextureLoadingTask, Frontend},
 };
 const INITIAL_WIDTH: u32 = 1920;
 const INITIAL_HEIGHT: u32 = 1080;
@@ -80,10 +80,8 @@ pub async fn main(mut db: DbBackend) {
     // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = RenderPass::new(&device, surface_format, 1);
 
-    let thumbnails = TextureStorage::new();
-
     // Display the demo application that ships with egui.
-    let mut frontend = Frontend::new(thumbnails.clone());
+    let mut frontend = Frontend::new(TextureLoadingTask::run());
 
     let start_time = Instant::now();
     event_loop.run(move |event, _, control_flow| {
@@ -138,9 +136,9 @@ pub async fn main(mut db: DbBackend) {
                     scale_factor: window.scale_factor() as f32,
                 };
 
-                if let Ok(mut thumbnails) = thumbnails.inner.try_lock() {
-                    thumbnails.create_textures(&mut egui_rpass, &queue, &device);
-                }
+                frontend
+                    .image_data
+                    .create_textures(&mut egui_rpass, &queue, &device);
 
                 egui_rpass.update_texture(&device, &queue, &platform.context().font_image());
                 egui_rpass.update_user_textures(&device, &queue);

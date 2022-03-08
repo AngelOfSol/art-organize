@@ -22,7 +22,7 @@ mod updater;
 
 fn main() -> anyhow::Result<()> {
     let runtime = Builder::new_multi_thread()
-        .worker_threads(4)
+        .worker_threads(12)
         .max_blocking_threads(12)
         .thread_keep_alive(Duration::from_secs(1))
         .enable_all()

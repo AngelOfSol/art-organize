@@ -3,15 +3,138 @@ use egui::TextureId;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{mpsc, Arc, Mutex},
 };
 use wgpu::{util::DeviceExt, Device, Extent3d, Queue, TextureDescriptor};
 
 use crate::backend::DbBackend;
 
-#[derive(Clone)]
-pub struct TextureStorage {
-    pub inner: Arc<Mutex<TextureStorageHandle>>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ImageRequest {
+    pub request_type: ImageRequestType,
+
+    blob_id: BlobId,
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ImageRequestType {
+    Thumbnail,
+    Image,
+}
+
+pub struct ImageData {
+    pub image: BTreeMap<ImageRequest, Image>,
+    outgoing: ImageRequester,
+    incoming: ImageDataReceiver,
+}
+
+impl ImageData {
+    pub fn image_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
+        let request = ImageRequest {
+            blob_id,
+            request_type: ImageRequestType::Image,
+        };
+        self.request(request, db, blob_id)
+    }
+    pub fn thumbnail_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
+        let request = ImageRequest {
+            blob_id,
+            request_type: ImageRequestType::Thumbnail,
+        };
+        self.request(request, db, blob_id)
+    }
+
+    fn request(&self, request: ImageRequest, db: &DbBackend, blob_id: BlobId) -> ImageStatus {
+        if let Some(image) = self.image.get(&request).copied() {
+            ImageStatus::Available(image)
+        } else {
+            let _ = self
+                .outgoing
+                .send((request, db.storage_for(blob_id)))
+                .unwrap();
+            ImageStatus::Unavailable
+        }
+    }
+
+    pub fn add_image(&mut self, request: ImageRequest, image: Image) {
+        self.image.insert(request, image);
+    }
+
+    pub fn create_textures(
+        &mut self,
+        egui_rpass: &mut egui_wgpu_backend::RenderPass,
+        queue: &Queue,
+        device: &Device,
+    ) {
+        while let Ok((request, image)) = self.incoming.try_recv() {
+            let image_texture_id = make_texture(device, queue, &image, egui_rpass);
+            self.add_image(
+                request,
+                Image {
+                    id: image_texture_id,
+                    width: image.width as u32,
+                    height: image.height as u32,
+                },
+            );
+        }
+    }
+}
+
+pub type ImageRequester = mpsc::Sender<(ImageRequest, PathBuf)>;
+pub type ImageDataReceiver = mpsc::Receiver<(ImageRequest, RawImage)>;
+
+pub struct TextureLoadingTask {
+    incoming: mpsc::Receiver<(ImageRequest, PathBuf)>,
+    outgoing: mpsc::Sender<(ImageRequest, RawImage)>,
+}
+
+impl TextureLoadingTask {
+    pub fn run() -> ImageData {
+        let (send_request, recv_request) = mpsc::channel();
+        let (send_image, recv_image) = mpsc::channel();
+
+        let handle = TextureLoadingTask {
+            incoming: recv_request,
+            outgoing: send_image,
+        };
+
+        tokio::task::spawn_blocking(move || {
+            let mut load_requested = BTreeSet::new();
+            while let Ok((request, path)) = handle.incoming.recv() {
+                if !load_requested.contains(&request) {
+                    load_requested.insert(request);
+
+                    let send_image = handle.outgoing.clone();
+
+                    tokio::spawn(async move {
+                        let image_data = tokio::fs::read(&path).await?;
+
+                        use image::GenericImageView as _;
+                        let image = image::load_from_memory(&image_data)?;
+
+                        let image = match request.request_type {
+                            ImageRequestType::Thumbnail => image.thumbnail(256, 256),
+                            ImageRequestType::Image => image,
+                        };
+
+                        let image = RawImage {
+                            width: image.width(),
+                            height: image.height(),
+                            data: image.to_rgba8().to_vec(),
+                        };
+
+                        send_image.send((request, image))?;
+
+                        anyhow::Result::<()>::Ok(())
+                    });
+                }
+            }
+        });
+        ImageData {
+            image: Default::default(),
+            outgoing: send_request,
+            incoming: recv_image,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -19,110 +142,6 @@ pub enum ImageStatus {
     Loading,
     Unavailable,
     Available(Image),
-}
-
-impl TextureStorage {
-    pub fn new() -> Self {
-        TextureStorage {
-            inner: Arc::new(Mutex::new(TextureStorageHandle {
-                loading: Default::default(),
-                loaded: Default::default(),
-                image: Default::default(),
-                thumbnail: Default::default(),
-                unavailable: Default::default(),
-            })),
-        }
-    }
-
-    pub fn image_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
-        let mut inner = if let Ok(inner) = self.inner.try_lock() {
-            inner
-        } else {
-            return ImageStatus::Loading;
-        };
-
-        if let Some(image) = inner.image.get(&blob_id).copied() {
-            ImageStatus::Available(image)
-        } else if inner.unavailable.contains(&blob_id) {
-            ImageStatus::Unavailable
-        } else {
-            if inner.loading.insert(blob_id) {
-                let inner = self.inner.clone();
-                let storage = db.storage_for(blob_id);
-                tokio::spawn(load(blob_id, storage, inner));
-            }
-
-            ImageStatus::Loading
-        }
-    }
-
-    pub fn thumbnail_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
-        let mut inner = if let Ok(inner) = self.inner.try_lock() {
-            inner
-        } else {
-            return ImageStatus::Loading;
-        };
-
-        if let Some(image) = inner.thumbnail.get(&blob_id).copied() {
-            ImageStatus::Available(image)
-        } else if inner.unavailable.contains(&blob_id) {
-            ImageStatus::Unavailable
-        } else {
-            if inner.loading.insert(blob_id) {
-                let inner = self.inner.clone();
-                let storage = db.storage_for(blob_id);
-                tokio::spawn(load(blob_id, storage, inner));
-            }
-
-            ImageStatus::Loading
-        }
-    }
-}
-
-async fn load(blob_id: BlobId, storage: PathBuf, inner: Arc<Mutex<TextureStorageHandle>>) {
-    let _load_result = async {
-        let image_data = tokio::fs::read(storage).await?;
-        use image::GenericImageView as _;
-        let image = if let Ok(image) = image::load_from_memory(&image_data) {
-            image
-        } else {
-            let mut inner = inner.lock().unwrap();
-
-            inner.loading.remove(&blob_id);
-            inner.unavailable.insert(blob_id);
-
-            return Ok(());
-        };
-
-        let thumbnail = image.thumbnail(256, 256);
-        let thumbnail = RawImage {
-            width: thumbnail.width(),
-            height: thumbnail.height(),
-            data: thumbnail.to_rgba8().to_vec(),
-        };
-
-        let image = RawImage {
-            width: image.width(),
-            height: image.height(),
-            data: image.to_rgba8().to_vec(),
-        };
-
-        let mut inner = inner.lock().unwrap();
-
-        inner.loading.remove(&blob_id);
-        inner.loaded.insert(blob_id, (thumbnail, image));
-
-        anyhow::Result::<()>::Ok(())
-    }
-    .await;
-}
-
-pub struct TextureStorageHandle {
-    loading: BTreeSet<BlobId>,
-    loaded: BTreeMap<BlobId, (RawImage, RawImage)>,
-    unavailable: BTreeSet<BlobId>,
-    image: BTreeMap<BlobId, Image>,
-    thumbnail: BTreeMap<BlobId, Image>,
 }
 
 #[derive(Clone, Debug)]
@@ -140,6 +159,12 @@ pub struct Image {
 }
 
 impl Image {
+    pub fn with_height(&self, height: f32) -> [f32; 2] {
+        let size = [self.width as f32, self.height as f32];
+        let aspect_ratio = size[0] / size[1];
+
+        [height * aspect_ratio, height]
+    }
     pub fn scaled(&self, max_size: [f32; 2]) -> [f32; 2] {
         let zoom = 1.0;
 
@@ -157,40 +182,6 @@ impl Image {
             } else {
                 [size[0] * max_size[1] / size[1], max_size[1]]
             }
-        }
-    }
-}
-
-impl TextureStorageHandle {
-    pub fn create_textures(
-        &mut self,
-        egui_rpass: &mut egui_wgpu_backend::RenderPass,
-        queue: &Queue,
-        device: &Device,
-    ) {
-        let loaded = std::mem::take(&mut self.loaded);
-
-        for (blob_id, (thumbnail, image)) in loaded {
-            let image_texture_id = make_texture(device, queue, &image, egui_rpass);
-            let thumbnail_texture_id = make_texture(device, queue, &thumbnail, egui_rpass);
-
-            self.loading.remove(&blob_id);
-            self.image.insert(
-                blob_id,
-                Image {
-                    id: image_texture_id,
-                    width: image.width as u32,
-                    height: image.height as u32,
-                },
-            );
-            self.thumbnail.insert(
-                blob_id,
-                Image {
-                    id: thumbnail_texture_id,
-                    width: image.width as u32,
-                    height: image.height as u32,
-                },
-            );
         }
     }
 }

@@ -1,14 +1,14 @@
 use db::{BlobId, PieceId, TagId};
 use egui::{
-    Button, CentralPanel, Color32, Frame, ImageButton, Label, Layout, RichText, ScrollArea, Sense,
-    SidePanel, TopBottomPanel, Vec2,
+    Button, CentralPanel, Color32, Frame, ImageButton, Label, Layout, PointerButton, RichText,
+    ScrollArea, Sense, SidePanel, TopBottomPanel, Vec2, Window,
 };
 use egui_demo_lib::easy_mark::easy_mark;
 use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
-    frontend::texture_storage::{ImageStatus, TextureStorage},
+    frontend::texture_storage::{ImageData, ImageRequestType, ImageStatus},
 };
 
 pub mod texture_storage;
@@ -17,24 +17,44 @@ pub mod texture_storage;
 pub enum Mode {
     Gallery,
     Piece((PieceId, Option<BlobId>)),
+    Fullscreen(BlobId),
 }
 
 pub struct Frontend {
     history: Vec<Mode>,
-    image_data: TextureStorage,
+    pub image_data: ImageData,
 }
 
 impl Frontend {
-    pub fn new(thumbnails: TextureStorage) -> Self {
+    pub fn new(image_data: ImageData) -> Self {
         Self {
             history: vec![Mode::Gallery],
-            image_data: thumbnails,
+            image_data,
         }
     }
 }
 
 impl Frontend {
     pub fn update(&mut self, db: &mut DbBackend, ctx: &egui::CtxRef) {
+        Window::new("Image Data").show(ctx, |ui| {
+            ui.label(format!(
+                "Number Thumbnails Loaded: {}",
+                self.image_data
+                    .image
+                    .keys()
+                    .filter(|key| { key.request_type == ImageRequestType::Thumbnail })
+                    .count()
+            ));
+            ui.label(format!(
+                "Number Images Loaded: {}",
+                self.image_data
+                    .image
+                    .keys()
+                    .filter(|key| { key.request_type == ImageRequestType::Image })
+                    .count()
+            ));
+        });
+
         TopBottomPanel::top("menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 let mut pop_to = None;
@@ -43,6 +63,7 @@ impl Frontend {
                     let response = match mode {
                         Mode::Gallery => ui.selectable_label(false, "Gallery"),
                         Mode::Piece(_) => ui.selectable_label(false, "Piece"),
+                        Mode::Fullscreen(_) => ui.selectable_label(false, "View"),
                     };
                     if response.clicked() {
                         pop_to = Some(idx);
@@ -58,9 +79,8 @@ impl Frontend {
             });
         });
 
-        //
         match *self.history.last().unwrap() {
-            Mode::Gallery => (),
+            Mode::Gallery | Mode::Fullscreen(_) => (),
             Mode::Piece((piece_id, current_blob_id)) => {
                 SidePanel::left("information")
                     .resizable(false)
@@ -112,12 +132,12 @@ impl Frontend {
                             tag_label(ui, db, tag_id);
                         }
                     });
-                SidePanel::right("image_list")
+                TopBottomPanel::bottom("image_list")
                     .resizable(false)
                     .show(ctx, |ui| {
-                        ui.set_min_width(276.0);
-                        ScrollArea::vertical().show(ui, |ui| {
-                            ui.vertical_centered_justified(|ui| {
+                        ui.set_min_height(276.0);
+                        ScrollArea::horizontal().show(ui, |ui| {
+                            ui.horizontal(|ui| {
                                 for blob_id in db
                                     .blobs_for_piece(piece_id)
                                     .sorted_by_key(|item| (db[item].blob_type, db[item].added))
@@ -127,7 +147,7 @@ impl Frontend {
                                             let response = ui.add(
                                                 ImageButton::new(
                                                     texture.id,
-                                                    texture.scaled([256.0; 2]),
+                                                    texture.with_height(256.0),
                                                 )
                                                 .selected(current_blob_id == Some(blob_id)),
                                             );
@@ -141,13 +161,13 @@ impl Frontend {
                                         }
                                         ImageStatus::Unavailable => {
                                             ui.add_sized(
-                                                [256.0, 30.0],
+                                                [256.0, 256.0],
                                                 Button::new(&db[blob_id].file_name),
                                             );
                                         }
                                         ImageStatus::Loading => {
                                             ui.add_sized(
-                                                [256.0; 2],
+                                                [256.0, 256.0],
                                                 Button::new(format!(
                                                     "Loading {}...",
                                                     db[blob_id].file_name
@@ -161,9 +181,19 @@ impl Frontend {
                     });
             }
         }
-        CentralPanel::default().show(ctx, |ui| match *self.history.last().unwrap() {
-            Mode::Gallery => self.gallery_view(ui, db),
-            Mode::Piece(state) => self.piece_view(ui, db, state),
+        CentralPanel::default().show(ctx, |ui| {
+            match *self.history.last().unwrap() {
+                Mode::Gallery => self.gallery_view(ui, db),
+                Mode::Piece(state) => self.piece_view(ui, db, state),
+                Mode::Fullscreen(blob_id) => {
+                    if let ImageStatus::Available(texture) = self.image_data.image_for(blob_id, db)
+                    {
+                        ui.centered_and_justified(|ui| {
+                            ui.image(texture.id, texture.scaled(ui.available_size().into()));
+                        });
+                    }
+                }
+            };
         });
     }
 
@@ -176,7 +206,19 @@ impl Frontend {
         if let Some(blob_id) = blob_id {
             if let ImageStatus::Available(texture) = self.image_data.image_for(blob_id, db) {
                 ui.centered_and_justified(|ui| {
-                    ui.image(texture.id, texture.scaled(ui.available_size().into()));
+                    if ui
+                        .add(
+                            ImageButton::new(
+                                texture.id,
+                                texture.scaled(ui.available_size().into()),
+                            )
+                            .selected(false)
+                            .frame(false),
+                        )
+                        .double_clicked()
+                    {
+                        self.history.push(Mode::Fullscreen(blob_id));
+                    }
                 });
             }
         } else {
@@ -185,59 +227,29 @@ impl Frontend {
     }
 
     fn gallery_view(&mut self, ui: &mut egui::Ui, db: &mut DbBackend) {
-        let row_size = (ui.available_width() / 266.0) as usize;
-        ScrollArea::vertical().auto_shrink([false, true]).show_rows(
-            ui,
-            266.0,
-            db.pieces().count() / row_size,
-            |ui, row_range| {
-                for row in db
-                    .pieces()
-                    .sorted_by_key(|(_, item)| item.added)
-                    .rev()
-                    .chunks(row_size)
-                    .into_iter()
-                    .skip(row_range.start)
-                    .take(row_range.end - row_range.start)
-                {
-                    ui.horizontal(|ui| {
-                        for (piece_id, piece) in row {
-                            let blob_id = db
-                                .blobs_for_piece(piece_id)
-                                .sorted_by_key(|item| db[item].blob_type)
-                                .next();
-                            let response = ui
-                                .allocate_ui_with_layout(
-                                    Vec2::new(266.0, 266.0),
-                                    Layout::centered_and_justified(egui::Direction::RightToLeft),
-                                    |ui| {
-                                        ui.set_min_size([266.0; 2].into());
-                                        if let Some(blob_id) = blob_id {
-                                            if let ImageStatus::Available(texture) =
-                                                self.image_data.thumbnail_for(blob_id, db)
-                                            {
-                                                ui.image(texture.id, texture.scaled([256.0; 2]));
-                                            }
-                                        } else {
-                                            ui.label("No Image");
-                                        }
-                                    },
-                                )
-                                .response;
-                            let response = ui.interact(
-                                response.rect,
-                                ui.make_persistent_id(piece_id),
-                                Sense::click(),
-                            );
-                            if response.clicked() {
-                                self.history.push(Mode::Piece((piece_id, blob_id)));
+        ScrollArea::vertical()
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    for (piece_id, _) in db.pieces().sorted_by_key(|(_, item)| item.added).rev() {
+                        let blob_id = db
+                            .blobs_for_piece(piece_id)
+                            .sorted_by_key(|item| (db[item].blob_type, db[item].added))
+                            .next();
+                        if let Some(blob_id) = blob_id {
+                            if let ImageStatus::Available(image) =
+                                self.image_data.thumbnail_for(blob_id, db)
+                            {
+                                let response =
+                                    ui.add(ImageButton::new(image.id, image.with_height(256.0)));
+                                if response.clicked_by(PointerButton::Primary) {
+                                    self.history.push(Mode::Piece((piece_id, Some(blob_id))));
+                                }
                             }
-                            response.on_hover_text(&format!("Description: {}", piece.description,));
                         }
-                    });
-                }
-            },
-        );
+                    }
+                });
+            });
     }
 }
 

@@ -249,11 +249,9 @@ async fn db_actor(
         match action {
             AppAction::Undo => {
                 let mut db = data.write().unwrap();
-                db.undo();
             }
             AppAction::Redo => {
                 let mut db = data.write().unwrap();
-                db.redo();
             }
             AppAction::NewDB => {
                 let root = if let Some(file) = AsyncFileDialog::new().pick_folder().await {
@@ -325,7 +323,6 @@ async fn db_actor(
                     let mut out_futures = FuturesUnordered::new();
                     {
                         let mut db = data.write().unwrap();
-                        db.undo_checkpoint();
 
                         for (path, blob) in files.into_iter().filter_map(Result::ok) {
                             let id = db.create_blob(blob);
@@ -390,7 +387,6 @@ async fn db_actor(
 
                     let storage = {
                         let mut db = data.write().unwrap();
-                        db.undo_checkpoint();
 
                         let id = db.create_blob(blob);
 
@@ -444,7 +440,6 @@ async fn db_actor(
             }
             AppAction::Db(db_action) => {
                 let mut db = data.write().unwrap();
-                db.undo_checkpoint();
 
                 match db_action {
                     DbAction::EditPiece(edit) => {
