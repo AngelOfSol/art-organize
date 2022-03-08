@@ -3,7 +3,7 @@ use egui::TextureId;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
-    sync::{mpsc, Arc, Mutex},
+    sync::mpsc,
 };
 use wgpu::{util::DeviceExt, Device, Extent3d, Queue, TextureDescriptor};
 
@@ -139,7 +139,6 @@ impl TextureLoadingTask {
 
 #[derive(Copy, Clone, Debug)]
 pub enum ImageStatus {
-    Loading,
     Unavailable,
     Available(Image),
 }

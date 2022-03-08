@@ -36,25 +36,6 @@ impl Frontend {
 
 impl Frontend {
     pub fn update(&mut self, db: &mut DbBackend, ctx: &egui::CtxRef) {
-        Window::new("Image Data").show(ctx, |ui| {
-            ui.label(format!(
-                "Number Thumbnails Loaded: {}",
-                self.image_data
-                    .image
-                    .keys()
-                    .filter(|key| { key.request_type == ImageRequestType::Thumbnail })
-                    .count()
-            ));
-            ui.label(format!(
-                "Number Images Loaded: {}",
-                self.image_data
-                    .image
-                    .keys()
-                    .filter(|key| { key.request_type == ImageRequestType::Image })
-                    .count()
-            ));
-        });
-
         TopBottomPanel::top("menu").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
                 let mut pop_to = None;
@@ -163,15 +144,6 @@ impl Frontend {
                                             ui.add_sized(
                                                 [256.0, 256.0],
                                                 Button::new(&db[blob_id].file_name),
-                                            );
-                                        }
-                                        ImageStatus::Loading => {
-                                            ui.add_sized(
-                                                [256.0, 256.0],
-                                                Button::new(format!(
-                                                    "Loading {}...",
-                                                    db[blob_id].file_name
-                                                )),
                                             );
                                         }
                                     }
