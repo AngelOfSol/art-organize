@@ -6,7 +6,7 @@ use std::{
 use tokio::fs;
 
 use db::{v2::DbV2 as Db, BlobId, DbV1};
-
+#[allow(dead_code)]
 pub mod actor;
 
 #[derive(Clone, Debug)]

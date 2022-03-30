@@ -104,6 +104,26 @@ impl DbV2 {
         self.categories.insert(data)
     }
 
+    pub fn find_tag_pair(&self, raw: &str) -> Option<TagId> {
+        let (tag_name, category_id) = if let Some((category_name, tag_name)) = raw.split_once(':') {
+            (
+                tag_name,
+                Some(
+                    self.categories()
+                        .find(|(_, category)| category.name == category_name)
+                        .map(|(category_id, _)| category_id)?,
+                ),
+            )
+        } else {
+            (raw, None)
+        };
+
+        self.tags()
+            .filter(|(tag_id, _)| self.category_for_tag(*tag_id) == category_id)
+            .find(|(_, tag)| tag.name == tag_name)
+            .map(|(id, _)| id)
+    }
+
     pub fn blobs_for_piece(&self, piece_id: PieceId) -> impl Iterator<Item = BlobId> + Clone + '_ {
         self.media
             .iter()

@@ -154,7 +154,13 @@ x allow user to add contextual shell commands via the settings screen
 
 [x] move to egui
 [] change filing system
-    [] no more types
-    [] add source_id tags for skeb
+    [x] no more types
+    [x] add source_id tags for skeb
 [] create inbox system (viewing folders / skeb http request)
-[] add id field
+[x] add id field
+[] finish up piece editing
+    [x] tag editing should just be a single text box
+    [] ther rest of the items
+[] finish blob editing
+[] finish tag editing
+[] finish tag_category

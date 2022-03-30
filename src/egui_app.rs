@@ -143,7 +143,7 @@ pub async fn main(mut db: DbBackend) {
                 };
 
                 frontend
-                    .image_data
+                    .image_data_mut()
                     .create_textures(&mut egui_rpass, &queue, &device);
 
                 egui_rpass.update_texture(&device, &queue, &platform.context().font_image());

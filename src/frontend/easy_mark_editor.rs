@@ -1,6 +1,7 @@
 use egui::{text_edit::CCursorRange, *};
 use egui_demo_lib::easy_mark::MemoizedEasymarkHighlighter;
 
+#[allow(clippy::ptr_arg)]
 pub fn easy_mark_editor(ui: &mut egui::Ui, code: &mut String) {
     let response = {
         let mut layouter = |ui: &egui::Ui, easymark: &str, wrap_width: f32| {
@@ -10,11 +11,7 @@ pub fn easy_mark_editor(ui: &mut egui::Ui, code: &mut String) {
             ui.fonts().layout_job(layout_job)
         };
 
-        ui.add(
-            egui::TextEdit::multiline(code)
-                .desired_width(f32::INFINITY)
-                .layouter(&mut layouter),
-        )
+        ui.add(egui::TextEdit::multiline(code).layouter(&mut layouter))
     };
 
     if let Some(mut state) = TextEdit::load_state(ui.ctx(), response.id) {

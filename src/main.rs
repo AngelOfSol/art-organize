@@ -1,6 +1,5 @@
 // #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use std::{path::PathBuf, time::Duration};
+#![feature(let_chains)]
 
 use anyhow::bail;
 use backend::DbBackend;
@@ -9,6 +8,7 @@ use cli::SubCommand;
 use config::Config;
 use rfd::{AsyncFileDialog, AsyncMessageDialog, MessageButtons, MessageLevel};
 use serde::{Deserialize, Serialize};
+use std::{path::PathBuf, time::Duration};
 use tokio::runtime::Builder;
 
 mod backend;
@@ -17,8 +17,10 @@ mod config;
 mod egui_app;
 mod frontend;
 mod loaders;
+mod ui_memory;
 mod undo;
 mod updater;
+mod views;
 
 fn main() -> anyhow::Result<()> {
     let runtime = Builder::new_multi_thread()

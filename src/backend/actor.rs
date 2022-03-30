@@ -247,12 +247,8 @@ async fn db_actor(
 ) {
     while let Some(action) = incoming.recv().await {
         match action {
-            AppAction::Undo => {
-                let mut db = data.write().unwrap();
-            }
-            AppAction::Redo => {
-                let mut db = data.write().unwrap();
-            }
+            AppAction::Undo => {}
+            AppAction::Redo => {}
             AppAction::NewDB => {
                 let root = if let Some(file) = AsyncFileDialog::new().pick_folder().await {
                     file.path().to_path_buf()

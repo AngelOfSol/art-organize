@@ -20,6 +20,7 @@ pub fn update_app() -> anyhow::Result<Status> {
         .update()?;
     Ok(status)
 }
+#[allow(dead_code)]
 pub fn check_for_new_releases() -> anyhow::Result<Option<String>> {
     let mut releases = self_update::backends::github::ReleaseList::configure()
         .repo_owner("AngelOfSol")
