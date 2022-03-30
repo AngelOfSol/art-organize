@@ -2,7 +2,7 @@ use db::PieceId;
 use egui::{PointerButton, ScrollArea, TextEdit, Ui};
 use std::hash::Hash;
 
-use crate::{backend::DbBackend, frontend::tag_label, ui_memory::MemoryExt};
+use crate::{backend::DbBackend, frontend::tag, ui_memory::MemoryExt};
 
 pub fn tag_editor<IdSource>(ui: &mut Ui, id: IdSource, piece_id: PieceId, db: &mut DbBackend)
 where
@@ -33,7 +33,7 @@ where
                             })
                             .collect::<Vec<_>>();
                         for tag_id in unadded {
-                            if tag_label(ui, db, tag_id).clicked_by(PointerButton::Secondary) {
+                            if tag::label(ui, db, tag_id).clicked_by(PointerButton::Secondary) {
                                 db.piece_tags.insert((piece_id, tag_id));
                             }
                         }
@@ -46,7 +46,7 @@ where
                     ui.vertical(|ui| {
                         ui.set_min_width(140.0);
                         for tag_id in added {
-                            if tag_label(ui, db, tag_id).clicked_by(PointerButton::Secondary) {
+                            if tag::label(ui, db, tag_id).clicked_by(PointerButton::Secondary) {
                                 db.piece_tags.remove(&(piece_id, tag_id));
                             }
                         }

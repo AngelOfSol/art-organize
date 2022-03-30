@@ -2,7 +2,7 @@ use db::PieceId;
 use egui_demo_lib::easy_mark::easy_mark;
 use itertools::Itertools;
 
-use crate::{backend::DbBackend, frontend::tag_label};
+use crate::{backend::DbBackend, frontend::tag};
 
 pub fn info_panel(db: &mut DbBackend, piece_id: PieceId, ui: &mut egui::Ui) {
     let piece = &db[piece_id];
@@ -36,7 +36,7 @@ pub fn info_panel(db: &mut DbBackend, piece_id: PieceId, ui: &mut egui::Ui) {
                 .filter(|tag_id| db.category_for_tag(*tag_id) == Some(category_id))
                 .sorted_by_key(|tag_id| &db[tag_id].name)
             {
-                tag_label(ui, db, tag_id);
+                tag::label(ui, db, tag_id);
             }
         });
     }
@@ -45,6 +45,6 @@ pub fn info_panel(db: &mut DbBackend, piece_id: PieceId, ui: &mut egui::Ui) {
         .filter(|tag_id| db.category_for_tag(*tag_id).is_none())
         .sorted_by_key(|tag_id| &db[tag_id].name)
     {
-        tag_label(ui, db, tag_id);
+        tag::label(ui, db, tag_id);
     }
 }
