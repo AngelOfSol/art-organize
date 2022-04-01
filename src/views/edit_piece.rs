@@ -1,15 +1,12 @@
 use db::PieceId;
-use egui::{Button, ImageButton, ScrollArea, TopBottomPanel};
+use egui::{ScrollArea, TopBottomPanel};
 use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
-    frontend::{
-        easy_mark_editor::easy_mark_editor, piece, tag_editor::tag_editor,
-        texture_storage::ImageStatus, Frontend,
-    },
-    ui_memory::{MemoryExt, TextItemEdit},
-    views::{view_blob::ViewBlob, View, ViewResponse},
+    frontend::{blob, easy_mark_editor::easy_mark_editor, piece, tag_editor::tag_editor, Frontend},
+    ui_memory::TextItemEdit,
+    views::View,
 };
 
 #[derive(Clone, Copy)]
@@ -76,24 +73,7 @@ impl View for EditPiece {
                             .blobs_for_piece(self.piece_id)
                             .sorted_by_key(|item| (db[item].blob_type, db[item].added))
                         {
-                            match frontend.thumbnail_for(blob_id, db) {
-                                ImageStatus::Available(texture) => {
-                                    let response = ui.add(ImageButton::new(
-                                        texture.id,
-                                        texture.with_height(256.0),
-                                    ));
-
-                                    if response.clicked() {
-                                        ui.push_view(ViewBlob { blob_id });
-                                    }
-                                }
-                                ImageStatus::Unavailable => {
-                                    ui.add_sized(
-                                        [256.0, 256.0],
-                                        Button::new(&db[blob_id].file_name),
-                                    );
-                                }
-                            }
+                            blob::thumbnail(ui, frontend, db, blob_id);
                         }
                     });
                 });

@@ -7,6 +7,7 @@ use crate::{
 use db::BlobId;
 use egui::{CentralPanel, TopBottomPanel};
 
+pub mod blob;
 pub mod easy_mark_editor;
 pub mod piece;
 pub mod tag;

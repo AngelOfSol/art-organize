@@ -3,7 +3,7 @@ use db::BlobId;
 use crate::{
     backend::DbBackend,
     frontend::{texture_storage::ImageStatus, Frontend},
-    views::{View, ViewResponse},
+    views::View,
 };
 
 #[derive(Clone, Copy)]
@@ -20,7 +20,7 @@ impl View for ViewBlob {
         }
     }
     fn name(&self) -> String {
-        "View Image".into()
+        "Blob".into()
     }
     fn boxed_clone(&self) -> Box<dyn View> {
         Box::new(*self)

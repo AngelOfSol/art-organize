@@ -1,7 +1,7 @@
 use std::{any::Any, str::FromStr};
 
 use chrono::NaiveDate;
-use egui::{Id, Response, TextEdit, Ui, Widget, WidgetText};
+use egui::{Color32, Id, Response, TextEdit, Ui, Widget, WidgetText};
 
 use crate::views::{View, ViewResponse};
 
@@ -28,21 +28,28 @@ impl<'a, T: 'static + Clone + TextEditable> TextItemEdit<'a, T> {
 
 impl<'a, T: 'static + Clone + TextEditable> Widget for TextItemEdit<'a, T> {
     fn ui(self, ui: &mut Ui) -> egui::Response {
-        let mut memory = ui
+        let (mut text_color, mut memory) = ui
             .memory()
             .data
             .get_temp(self.id)
-            .unwrap_or_else(|| self.data.to_text());
+            .unwrap_or_else(|| (None, self.data.to_text()));
 
-        let widget = TextEdit::singleline(&mut memory).hint_text(self.hint_text);
+        let widget = TextEdit::singleline(&mut memory)
+            .text_color_opt(text_color)
+            .hint_text(self.hint_text);
 
         let response = ui.add(widget);
 
-        if response.changed() && let Some(new_value) = T::from_text(&memory) {
-            *self.data = new_value;
+        if response.changed() {
+            if let Some(new_value) = T::from_text(&memory) {
+                *self.data = new_value;
+                text_color = None;
+            } else {
+                text_color = Some(Color32::LIGHT_RED);
+            }
         }
 
-        ui.memory().data.insert_temp(self.id, memory);
+        ui.memory().data.insert_temp(self.id, (text_color, memory));
 
         response
     }

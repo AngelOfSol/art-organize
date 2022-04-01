@@ -1,12 +1,12 @@
 use db::{BlobId, PieceId};
-use egui::{Button, CtxRef, ImageButton, ScrollArea, SidePanel, TopBottomPanel};
+use egui::{ImageButton, ScrollArea, SidePanel, TopBottomPanel};
 use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
-    frontend::{piece, texture_storage::ImageStatus, Frontend},
+    frontend::{blob, piece, texture_storage::ImageStatus, Frontend},
     ui_memory::MemoryExt,
-    views::{view_blob::ViewBlob, View, ViewResponse},
+    views::{view_blob::ViewBlob, View},
 };
 
 #[derive(Clone, Copy)]
@@ -56,31 +56,14 @@ impl View for ViewPiece {
                             .blobs_for_piece(self.piece_id)
                             .sorted_by_key(|item| (db[item].blob_type, db[item].added))
                         {
-                            match frontend.thumbnail_for(blob_id, db) {
-                                ImageStatus::Available(texture) => {
-                                    let response = ui.add(
-                                        ImageButton::new(texture.id, texture.with_height(256.0))
-                                            .selected(self.previewed == Some(blob_id)),
-                                    );
-
-                                    if response.clicked() {
-                                        self.previewed = Some(blob_id);
-                                    }
-                                }
-                                ImageStatus::Unavailable => {
-                                    ui.add_sized(
-                                        [256.0, 256.0],
-                                        Button::new(&db[blob_id].file_name),
-                                    );
-                                }
-                            }
+                            blob::thumbnail(ui, frontend, db, blob_id);
                         }
                     });
                 });
             });
     }
     fn name(&self) -> String {
-        "View Piece".into()
+        "Piece".into()
     }
     fn boxed_clone(&self) -> Box<dyn View> {
         Box::new(*self)

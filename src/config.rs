@@ -12,6 +12,8 @@ lazy_static! {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Config {
     pub default_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub skeb_token: Option<String>,
 }
 
 fn get_file() -> PathBuf {
