@@ -3,6 +3,8 @@ use std::{any::Any, str::FromStr};
 use chrono::NaiveDate;
 use egui::{Id, Response, TextEdit, Ui, Widget, WidgetText};
 
+use crate::views::{View, ViewResponse};
+
 pub struct TextItemEdit<'a, T> {
     data: &'a mut T,
     id: Id,
@@ -114,9 +116,52 @@ pub trait MemoryExt {
         init: I,
         f: F,
     ) -> R;
+
+    fn push_view(&mut self, view: impl View + 'static);
+
+    fn replace_view(&mut self, view: impl View + 'static);
+
+    fn pop_view(&mut self);
+
+    fn view_response(&self) -> ViewResponse;
+    fn reset_view_response(&mut self);
 }
 
 impl MemoryExt for Ui {
+    fn push_view(&mut self, view: impl View + 'static) {
+        self.memory()
+            .data
+            .get_temp_mut_or(Id::new("global_view_response"), ViewResponse::Unchanged)
+            .push(view)
+    }
+
+    fn replace_view(&mut self, view: impl View + 'static) {
+        self.memory()
+            .data
+            .get_temp_mut_or(Id::new("global_view_response"), ViewResponse::Unchanged)
+            .replace(view)
+    }
+
+    fn pop_view(&mut self) {
+        self.memory()
+            .data
+            .get_temp_mut_or(Id::new("global_view_response"), ViewResponse::Unchanged)
+            .pop()
+    }
+
+    fn reset_view_response(&mut self) {
+        self.memory()
+            .data
+            .insert_temp(Id::new("global_view_response"), ViewResponse::Unchanged)
+    }
+
+    fn view_response(&self) -> ViewResponse {
+        self.memory()
+            .data
+            .get_temp(Id::new("global_view_response"))
+            .unwrap_or(ViewResponse::Unchanged)
+    }
+
     fn with_memory<
         T: 'static + Any + Clone + Send + Sync,
         R,

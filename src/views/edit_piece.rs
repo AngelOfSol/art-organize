@@ -8,22 +8,17 @@ use crate::{
         easy_mark_editor::easy_mark_editor, piece, tag_editor::tag_editor,
         texture_storage::ImageStatus, Frontend,
     },
-    ui_memory::TextItemEdit,
+    ui_memory::{MemoryExt, TextItemEdit},
     views::{view_blob::ViewBlob, View, ViewResponse},
 };
 
+#[derive(Clone, Copy)]
 pub struct EditPiece {
     pub piece_id: PieceId,
 }
 
 impl View for EditPiece {
-    fn center_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        _: &mut Frontend,
-        db: &mut DbBackend,
-        _: &mut ViewResponse,
-    ) {
+    fn center_panel(&mut self, ui: &mut egui::Ui, _: &mut Frontend, db: &mut DbBackend) {
         ui.columns(2, |ui| {
             ui[0].vertical(|ui| {
                 let piece = db.pieces.get_mut(self.piece_id).unwrap();
@@ -70,13 +65,7 @@ impl View for EditPiece {
         });
     }
 
-    fn side_panels(
-        &mut self,
-        ctx: &egui::CtxRef,
-        frontend: &mut Frontend,
-        db: &mut DbBackend,
-        view_response: &mut ViewResponse,
-    ) {
+    fn side_panels(&mut self, ctx: &egui::CtxRef, frontend: &mut Frontend, db: &mut DbBackend) {
         TopBottomPanel::bottom("image_list")
             .resizable(false)
             .show(ctx, |ui| {
@@ -95,7 +84,7 @@ impl View for EditPiece {
                                     ));
 
                                     if response.clicked() {
-                                        view_response.push(ViewBlob { blob_id });
+                                        ui.push_view(ViewBlob { blob_id });
                                     }
                                 }
                                 ImageStatus::Unavailable => {
@@ -113,5 +102,9 @@ impl View for EditPiece {
 
     fn name(&self) -> String {
         "Edit Piece".into()
+    }
+
+    fn boxed_clone(&self) -> Box<dyn View> {
+        Box::new(*self)
     }
 }

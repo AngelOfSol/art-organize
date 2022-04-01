@@ -4,19 +4,15 @@ use itertools::Itertools;
 use crate::{
     backend::DbBackend,
     frontend::{texture_storage::ImageStatus, Frontend},
-    views::{edit_piece::EditPiece, view_piece::ViewPiece, View, ViewResponse},
+    ui_memory::MemoryExt,
+    views::{edit_piece::EditPiece, view_piece::ViewPiece, View},
 };
 
+#[derive(Clone, Copy)]
 pub struct Gallery;
 
 impl View for Gallery {
-    fn center_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        frontend: &mut Frontend,
-        db: &mut DbBackend,
-        view_response: &mut ViewResponse,
-    ) {
+    fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
         ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {
@@ -33,7 +29,7 @@ impl View for Gallery {
                                 let response =
                                     ui.add(ImageButton::new(image.id, image.with_height(256.0)));
                                 if response.clicked_by(PointerButton::Primary) {
-                                    view_response.push(ViewPiece {
+                                    ui.push_view(ViewPiece {
                                         piece_id,
                                         previewed: Some(blob_id),
                                     });
@@ -41,11 +37,11 @@ impl View for Gallery {
 
                                 response.context_menu(|ui| {
                                     if ui.button("Edit").clicked() {
-                                        view_response.push(EditPiece { piece_id });
+                                        ui.push_view(EditPiece { piece_id });
                                         ui.close_menu();
                                     }
                                     if ui.button("View").clicked() {
-                                        view_response.push(ViewPiece {
+                                        ui.push_view(ViewPiece {
                                             piece_id,
                                             previewed: Some(blob_id),
                                         });
@@ -60,5 +56,8 @@ impl View for Gallery {
     }
     fn name(&self) -> String {
         "Gallery".into()
+    }
+    fn boxed_clone(&self) -> Box<dyn View> {
+        Box::new(*self)
     }
 }

@@ -12,6 +12,17 @@ pub enum ViewResponse {
     Unchanged,
 }
 
+impl Clone for ViewResponse {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Push(arg0) => Self::Push(arg0.boxed_clone()),
+            Self::Replace(arg0) => Self::Replace(arg0.boxed_clone()),
+            Self::Pop => Self::Pop,
+            Self::Unchanged => Self::Unchanged,
+        }
+    }
+}
+
 impl ViewResponse {
     pub fn push(&mut self, view: impl View + 'static) {
         *self = Self::Push(Box::new(view));
@@ -25,22 +36,10 @@ impl ViewResponse {
         *self = Self::Pop;
     }
 }
-pub trait View {
+pub trait View: Send + Sync {
+    fn boxed_clone(&self) -> Box<dyn View>;
     fn name(&self) -> String;
 
-    fn center_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        frontend: &mut Frontend,
-        db: &mut DbBackend,
-        view_response: &mut ViewResponse,
-    );
-    fn side_panels(
-        &mut self,
-        _: &egui::CtxRef,
-        _: &mut Frontend,
-        _: &mut DbBackend,
-        _: &mut ViewResponse,
-    ) {
-    }
+    fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend);
+    fn side_panels(&mut self, _: &egui::CtxRef, _: &mut Frontend, _: &mut DbBackend) {}
 }

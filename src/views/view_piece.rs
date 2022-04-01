@@ -5,22 +5,18 @@ use itertools::Itertools;
 use crate::{
     backend::DbBackend,
     frontend::{piece, texture_storage::ImageStatus, Frontend},
+    ui_memory::MemoryExt,
     views::{view_blob::ViewBlob, View, ViewResponse},
 };
 
+#[derive(Clone, Copy)]
 pub struct ViewPiece {
     pub piece_id: PieceId,
     pub previewed: Option<BlobId>,
 }
 
 impl View for ViewPiece {
-    fn center_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        frontend: &mut Frontend,
-        db: &mut DbBackend,
-        view_response: &mut ViewResponse,
-    ) {
+    fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
         if let Some(blob_id) = self.previewed {
             if let ImageStatus::Available(texture) = frontend.image_for(blob_id, db) {
                 ui.centered_and_justified(|ui| {
@@ -35,7 +31,7 @@ impl View for ViewPiece {
                         )
                         .double_clicked()
                     {
-                        view_response.push(ViewBlob { blob_id });
+                        ui.push_view(ViewBlob { blob_id });
                     }
                 });
             }
@@ -44,13 +40,7 @@ impl View for ViewPiece {
         }
     }
 
-    fn side_panels(
-        &mut self,
-        ctx: &CtxRef,
-        frontend: &mut Frontend,
-        db: &mut DbBackend,
-        _: &mut ViewResponse,
-    ) {
+    fn side_panels(&mut self, ctx: &egui::CtxRef, frontend: &mut Frontend, db: &mut DbBackend) {
         SidePanel::left("information")
             .resizable(false)
             .show(ctx, |ui| {
@@ -91,5 +81,8 @@ impl View for ViewPiece {
     }
     fn name(&self) -> String {
         "View Piece".into()
+    }
+    fn boxed_clone(&self) -> Box<dyn View> {
+        Box::new(*self)
     }
 }

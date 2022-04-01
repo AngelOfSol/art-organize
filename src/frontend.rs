@@ -1,6 +1,7 @@
 use crate::{
     backend::DbBackend,
     frontend::texture_storage::{ImageData, ImageStatus},
+    ui_memory::MemoryExt,
     views::{gallery::Gallery, View, ViewResponse},
 };
 use db::BlobId;
@@ -78,10 +79,12 @@ impl Frontend {
 
         let mut view_response = ViewResponse::Unchanged;
 
-        current_view.side_panels(ctx, self, db, &mut view_response);
+        current_view.side_panels(ctx, self, db);
 
         CentralPanel::default().show(ctx, |ui| {
-            current_view.center_panel(ui, self, db, &mut view_response);
+            current_view.center_panel(ui, self, db);
+            view_response = ui.view_response();
+            ui.reset_view_response();
         });
 
         self.handle_view_response(view_response, current_view);
