@@ -1,12 +1,11 @@
 use db::{BlobId, PieceId};
-use egui::{ImageButton, ScrollArea, SidePanel, TopBottomPanel};
+use egui::{ScrollArea, SidePanel, TopBottomPanel};
 use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
-    frontend::{blob, piece, texture_storage::ImageStatus, Frontend},
-    ui_memory::MemoryExt,
-    views::{view_blob::ViewBlob, View},
+    frontend::{blob, piece, Frontend},
+    views::View,
 };
 
 #[derive(Clone, Copy)]
@@ -18,23 +17,7 @@ pub struct ViewPiece {
 impl View for ViewPiece {
     fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
         if let Some(blob_id) = self.previewed {
-            if let ImageStatus::Available(texture) = frontend.image_for(blob_id, db) {
-                ui.centered_and_justified(|ui| {
-                    if ui
-                        .add(
-                            ImageButton::new(
-                                texture.id,
-                                texture.scaled(ui.available_size().into()),
-                            )
-                            .selected(false)
-                            .frame(false),
-                        )
-                        .double_clicked()
-                    {
-                        ui.push_view(ViewBlob { blob_id });
-                    }
-                });
-            }
+            blob::display(ui, frontend, db, blob_id);
         } else {
             ui.label("No Image");
         }
@@ -56,7 +39,9 @@ impl View for ViewPiece {
                             .blobs_for_piece(self.piece_id)
                             .sorted_by_key(|item| (db[item].blob_type, db[item].added))
                         {
-                            blob::thumbnail(ui, frontend, db, blob_id);
+                            if blob::thumbnail(ui, frontend, db, blob_id).clicked() {
+                                self.previewed = Some(blob_id);
+                            }
                         }
                     });
                 });

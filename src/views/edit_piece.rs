@@ -1,5 +1,5 @@
-use db::PieceId;
-use egui::{ScrollArea, TopBottomPanel};
+use db::{BlobId, PieceId};
+use egui::{ScrollArea, SidePanel, TopBottomPanel};
 use itertools::Itertools;
 
 use crate::{
@@ -12,57 +12,65 @@ use crate::{
 #[derive(Clone, Copy)]
 pub struct EditPiece {
     pub piece_id: PieceId,
+    pub previewed: Option<BlobId>,
 }
 
 impl View for EditPiece {
-    fn center_panel(&mut self, ui: &mut egui::Ui, _: &mut Frontend, db: &mut DbBackend) {
-        ui.columns(2, |ui| {
-            ui[0].vertical(|ui| {
-                let piece = db.pieces.get_mut(self.piece_id).unwrap();
-
-                ui.add(
-                    TextItemEdit::new(
-                        ui.make_persistent_id("external_id").with(self.piece_id),
-                        &mut piece.external_id,
-                    )
-                    .hint_text("External ID"),
-                );
-
-                ui.add(
-                    TextItemEdit::new(
-                        ui.make_persistent_id("added").with(self.piece_id),
-                        &mut piece.added,
-                    )
-                    .hint_text("Added On"),
-                );
-
-                ui.add(
-                    TextItemEdit::new(
-                        ui.make_persistent_id("base_price").with(self.piece_id),
-                        &mut piece.base_price,
-                    )
-                    .hint_text("Price"),
-                );
-                ui.add(
-                    TextItemEdit::new(
-                        ui.make_persistent_id("tip_price").with(self.piece_id),
-                        &mut piece.tip_price,
-                    )
-                    .hint_text("Tip"),
-                );
-
-                ui.separator();
-                easy_mark_editor(ui, &mut piece.description);
-                ui.separator();
-                tag_editor(ui, self.piece_id, self.piece_id, db);
-            });
-            ui[1].vertical(|ui| {
-                piece::info_panel(db, self.piece_id, ui);
-            });
-        });
+    fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
+        if let Some(blob_id) = self.previewed {
+            blob::display(ui, frontend, db, blob_id);
+        } else {
+            ui.label("No Image");
+        }
     }
 
     fn side_panels(&mut self, ctx: &egui::CtxRef, frontend: &mut Frontend, db: &mut DbBackend) {
+        SidePanel::left("editor").resizable(false).show(ctx, |ui| {
+            ui.columns(2, |ui| {
+                ui[0].vertical(|ui| {
+                    let piece = db.pieces.get_mut(self.piece_id).unwrap();
+
+                    ui.add(
+                        TextItemEdit::new(
+                            ui.make_persistent_id("external_id").with(self.piece_id),
+                            &mut piece.external_id,
+                        )
+                        .hint_text("External ID"),
+                    );
+
+                    ui.add(
+                        TextItemEdit::new(
+                            ui.make_persistent_id("added").with(self.piece_id),
+                            &mut piece.added,
+                        )
+                        .hint_text("Added On"),
+                    );
+
+                    ui.add(
+                        TextItemEdit::new(
+                            ui.make_persistent_id("base_price").with(self.piece_id),
+                            &mut piece.base_price,
+                        )
+                        .hint_text("Price"),
+                    );
+                    ui.add(
+                        TextItemEdit::new(
+                            ui.make_persistent_id("tip_price").with(self.piece_id),
+                            &mut piece.tip_price,
+                        )
+                        .hint_text("Tip"),
+                    );
+
+                    ui.separator();
+                    easy_mark_editor(ui, &mut piece.description);
+                    ui.separator();
+                    tag_editor(ui, self.piece_id, self.piece_id, db);
+                });
+                ui[1].vertical(|ui| {
+                    piece::info_panel(db, self.piece_id, ui);
+                });
+            });
+        });
         TopBottomPanel::bottom("image_list")
             .resizable(false)
             .show(ctx, |ui| {
@@ -73,7 +81,9 @@ impl View for EditPiece {
                             .blobs_for_piece(self.piece_id)
                             .sorted_by_key(|item| (db[item].blob_type, db[item].added))
                         {
-                            blob::thumbnail(ui, frontend, db, blob_id);
+                            if blob::thumbnail(ui, frontend, db, blob_id).clicked() {
+                                self.previewed = Some(blob_id);
+                            }
                         }
                     });
                 });

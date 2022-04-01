@@ -2,7 +2,7 @@ use db::BlobId;
 
 use crate::{
     backend::DbBackend,
-    frontend::{texture_storage::ImageStatus, Frontend},
+    frontend::{blob, Frontend},
     views::View,
 };
 
@@ -13,11 +13,7 @@ pub struct ViewBlob {
 
 impl View for ViewBlob {
     fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
-        if let ImageStatus::Available(texture) = frontend.image_for(self.blob_id, db) {
-            ui.centered_and_justified(|ui| {
-                ui.image(texture.id, texture.scaled(ui.available_size().into()));
-            });
-        }
+        blob::display(ui, frontend, db, self.blob_id);
     }
     fn name(&self) -> String {
         "Blob".into()
