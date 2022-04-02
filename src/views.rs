@@ -2,9 +2,11 @@ use crate::{backend::DbBackend, frontend::Frontend};
 
 pub mod edit_blob;
 pub mod edit_piece;
+pub mod edit_tag;
 pub mod gallery;
 pub mod view_blob;
 pub mod view_piece;
+pub mod view_tag;
 
 pub enum ViewResponse {
     Push(Box<dyn View>),
@@ -39,7 +41,7 @@ impl ViewResponse {
 }
 pub trait View: Send + Sync {
     fn boxed_clone(&self) -> Box<dyn View>;
-    fn name(&self) -> String;
+    fn name(&self, db: &DbBackend) -> String;
 
     fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend);
     fn side_panels(&mut self, _: &egui::CtxRef, _: &mut Frontend, _: &mut DbBackend) {}

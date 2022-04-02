@@ -15,6 +15,9 @@ pub struct ViewPiece {
 }
 
 impl View for ViewPiece {
+    fn name(&self, db: &DbBackend) -> String {
+        format!("{}...", &db[self.piece_id].description[..10])
+    }
     fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
         if let Some(blob_id) = self.previewed {
             blob::display(ui, frontend, db, blob_id);
@@ -47,9 +50,7 @@ impl View for ViewPiece {
                 });
             });
     }
-    fn name(&self) -> String {
-        "Piece".into()
-    }
+
     fn boxed_clone(&self) -> Box<dyn View> {
         Box::new(*self)
     }

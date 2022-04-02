@@ -61,7 +61,7 @@ impl Frontend {
                 let mut pop_to = None;
                 for (idx, view) in self.history.iter().enumerate() {
                     let last = idx == self.history.len() - 1;
-                    let response = ui.selectable_label(false, &view.name());
+                    let response = ui.selectable_label(false, &view.name(db));
                     if response.clicked() {
                         pop_to = Some(idx);
                     }
@@ -87,6 +87,10 @@ impl Frontend {
             view_response = ui.view_response();
             ui.reset_view_response();
         });
+
+        if let Some(open_url) = ctx.output().open_url.take() {
+            let _ = open::that(&open_url.url);
+        }
 
         self.handle_view_response(view_response, current_view);
     }

@@ -1,9 +1,9 @@
 use crate::{
     backend::DbBackend,
-    frontend::{piece, Frontend},
+    frontend::{piece, tag, Frontend},
     views::View,
 };
-use egui::ScrollArea;
+use egui::{ScrollArea, SidePanel};
 use itertools::Itertools;
 
 #[derive(Clone, Copy)]
@@ -21,7 +21,15 @@ impl View for Gallery {
                 });
             });
     }
-    fn name(&self) -> String {
+
+    fn side_panels(&mut self, ctx: &egui::CtxRef, _: &mut Frontend, db: &mut DbBackend) {
+        SidePanel::left("information").show(ctx, |ui| {
+            ScrollArea::vertical().show(ui, |ui| {
+                tag::list(db, db.tags.keys(), ui);
+            });
+        });
+    }
+    fn name(&self, _: &DbBackend) -> String {
         "Gallery".into()
     }
     fn boxed_clone(&self) -> Box<dyn View> {

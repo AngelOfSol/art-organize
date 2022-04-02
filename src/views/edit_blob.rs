@@ -19,8 +19,8 @@ impl View for EditBlob {
         Box::new(*self)
     }
 
-    fn name(&self) -> String {
-        "Edit Blob".into()
+    fn name(&self, db: &DbBackend) -> String {
+        format!("Edit {}", db[self.blob_id].file_name)
     }
     fn center_panel(&mut self, ui: &mut egui::Ui, frontend: &mut Frontend, db: &mut DbBackend) {
         if let ImageStatus::Available(texture) = frontend.image_for(self.blob_id, db) {

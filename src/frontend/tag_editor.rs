@@ -1,5 +1,6 @@
 use db::PieceId;
 use egui::{PointerButton, ScrollArea, TextEdit, Ui};
+use itertools::Itertools;
 use std::hash::Hash;
 
 use crate::{backend::DbBackend, frontend::tag, ui_memory::MemoryExt};
@@ -31,6 +32,7 @@ where
                                 filter.trim() == ""
                                     || db[tag_id].name.matches(filter.as_str()).count() > 0
                             })
+                            .sorted_by_key(|tag_id| &db[tag_id].name)
                             .collect::<Vec<_>>();
                         for tag_id in unadded {
                             if tag::label(ui, db, tag_id).clicked_by(PointerButton::Secondary) {

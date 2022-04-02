@@ -30,35 +30,25 @@ impl View for EditPiece {
                 ui[0].vertical(|ui| {
                     let piece = db.pieces.get_mut(self.piece_id).unwrap();
 
+                    let parent_id = ui.make_persistent_id(self.piece_id);
                     ui.add(
-                        TextItemEdit::new(
-                            ui.make_persistent_id("external_id").with(self.piece_id),
-                            &mut piece.external_id,
-                        )
-                        .hint_text("External ID"),
+                        TextItemEdit::new(parent_id.with("external_id"), &mut piece.external_id)
+                            .hint_text("External ID"),
                     );
 
                     ui.add(
-                        TextItemEdit::new(
-                            ui.make_persistent_id("added").with(self.piece_id),
-                            &mut piece.added,
-                        )
-                        .hint_text("Added On"),
+                        TextItemEdit::new(parent_id.with("added"), &mut piece.added)
+                            .hint_text("Added On"),
                     );
 
                     ui.add(
-                        TextItemEdit::new(
-                            ui.make_persistent_id("base_price").with(self.piece_id),
-                            &mut piece.base_price,
-                        )
-                        .hint_text("Price"),
+                        TextItemEdit::new(parent_id.with("base_price"), &mut piece.base_price)
+                            .hint_text("Price"),
                     );
+
                     ui.add(
-                        TextItemEdit::new(
-                            ui.make_persistent_id("tip_price").with(self.piece_id),
-                            &mut piece.tip_price,
-                        )
-                        .hint_text("Tip"),
+                        TextItemEdit::new(parent_id.with("tip_price"), &mut piece.tip_price)
+                            .hint_text("Tip"),
                     );
 
                     ui.separator();
@@ -90,8 +80,8 @@ impl View for EditPiece {
             });
     }
 
-    fn name(&self) -> String {
-        "Edit Piece".into()
+    fn name(&self, db: &DbBackend) -> String {
+        format!("Edit {}...", &db[self.piece_id].description[..10])
     }
 
     fn boxed_clone(&self) -> Box<dyn View> {
