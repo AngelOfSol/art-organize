@@ -5,7 +5,7 @@ use crate::{
     views::View,
 };
 use db::TagId;
-use egui::{ScrollArea, SidePanel};
+use egui::{popup_below_widget, show_tooltip, ComboBox, Response, ScrollArea, SidePanel};
 use itertools::Itertools;
 
 #[derive(Clone, Copy)]
@@ -38,6 +38,34 @@ impl View for EditTag {
                     &db[category_id].name,
                 );
             }
+
+            let mut category_for_tag = db.category_for_tag(self.tag_id);
+            ComboBox::from_label("Category")
+                .selected_text(
+                    category_for_tag
+                        .as_ref()
+                        .map(|category_id| db[category_id].name.clone())
+                        .unwrap_or_else(|| "<none>".to_string()),
+                )
+                .show_ui(ui, |ui| {
+                    let mut response = ui.selectable_value(&mut category_for_tag, None, "<none>");
+                    for category_id in db.categories.keys() {
+                        response = ui
+                            .selectable_value(
+                                &mut category_for_tag,
+                                Some(category_id),
+                                &db[category_id].name,
+                            )
+                            .union(response);
+                    }
+                    if response.changed() {
+                        if let Some(category_id) = category_for_tag {
+                            db.tag_category.insert(self.tag_id, category_id);
+                        } else {
+                            db.tag_category.remove(&self.tag_id);
+                        }
+                    }
+                });
 
             let tag = db.tags.get_mut(self.tag_id).unwrap();
             let parent_id = ui.make_persistent_id(self.tag_id);
