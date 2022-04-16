@@ -1,6 +1,7 @@
 use crate::{
     backend::DbBackend,
     frontend::{piece, Frontend},
+    ui_memory::color32_from,
     views::View,
 };
 use db::TagId;
@@ -36,11 +37,7 @@ impl View for ViewTag {
                 let tag = &db[self.tag_id];
 
                 if let Some(category_id) = db.category_for_tag(self.tag_id) {
-                    let color = db[category_id].color;
-                    ui.colored_label(
-                        egui::Rgba::from_srgba_unmultiplied(color[0], color[1], color[2], color[3]),
-                        &db[category_id].name,
-                    );
+                    ui.colored_label(color32_from(db[category_id].color), &db[category_id].name);
                 }
                 ui.label(format!("Added: {}", tag.added));
 

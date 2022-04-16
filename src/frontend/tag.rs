@@ -1,11 +1,12 @@
 use db::TagId;
-use egui::{Color32, Response, RichText};
+use egui::{Response, RichText};
+use egui_demo_lib::easy_mark::easy_mark;
 use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
     frontend::category,
-    ui_memory::MemoryExt,
+    ui_memory::{color32_from, MemoryExt},
     views::{edit_tag::EditTag, view_tag::ViewTag},
 };
 
@@ -13,11 +14,7 @@ pub fn label(ui: &mut egui::Ui, db: &DbBackend, tag_id: TagId) -> Response {
     let mut text = RichText::new(&db[tag_id].name);
 
     if let Some(category_id) = db.category_for_tag(tag_id) {
-        text = text.color(Color32::from_rgb(
-            db[category_id].color[0],
-            db[category_id].color[1],
-            db[category_id].color[2],
-        ));
+        text = text.color(color32_from(db[category_id].color));
     }
 
     let response = ui.selectable_label(false, text);
@@ -25,7 +22,7 @@ pub fn label(ui: &mut egui::Ui, db: &DbBackend, tag_id: TagId) -> Response {
     let description = &db[tag_id].description;
     if description.trim() != "" {
         response.clone().on_hover_ui(|ui| {
-            ui.label(description);
+            easy_mark(ui, description);
         });
     }
 

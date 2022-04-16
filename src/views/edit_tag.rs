@@ -31,14 +31,6 @@ impl View for EditTag {
     }
     fn side_panels(&mut self, ctx: &egui::CtxRef, _: &mut Frontend, db: &mut DbBackend) {
         SidePanel::left("information").show(ctx, |ui| {
-            if let Some(category_id) = db.category_for_tag(self.tag_id) {
-                let color = db[category_id].color;
-                ui.colored_label(
-                    egui::Rgba::from_srgba_unmultiplied(color[0], color[1], color[2], color[3]),
-                    &db[category_id].name,
-                );
-            }
-
             let mut category_for_tag = db.category_for_tag(self.tag_id);
             ComboBox::from_label("Category")
                 .selected_text(
@@ -69,6 +61,8 @@ impl View for EditTag {
 
             let tag = db.tags.get_mut(self.tag_id).unwrap();
             let parent_id = ui.make_persistent_id(self.tag_id);
+
+            ui.add(TextItemEdit::new(parent_id.with("name"), &mut tag.name).hint_text("Name"));
             ui.add(
                 TextItemEdit::new(parent_id.with("added"), &mut tag.added).hint_text("Added On"),
             );

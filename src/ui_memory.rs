@@ -5,6 +5,10 @@ use egui::{Color32, Id, Response, TextEdit, Ui, Widget, WidgetText};
 
 use crate::views::{View, ViewResponse};
 
+pub fn color32_from(color: [u8; 4]) -> Color32 {
+    Color32::from_rgba_unmultiplied(color[0], color[1], color[2], color[3])
+}
+
 pub struct TextItemEdit<'a, T> {
     data: &'a mut T,
     id: Id,

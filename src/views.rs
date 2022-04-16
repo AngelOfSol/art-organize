@@ -1,6 +1,7 @@
 use crate::{backend::DbBackend, frontend::Frontend};
 
 pub mod edit_blob;
+pub mod edit_category;
 pub mod edit_piece;
 pub mod edit_tag;
 pub mod gallery;

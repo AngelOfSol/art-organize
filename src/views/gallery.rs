@@ -24,9 +24,11 @@ impl View for Gallery {
 
     fn side_panels(&mut self, ctx: &egui::CtxRef, _: &mut Frontend, db: &mut DbBackend) {
         SidePanel::left("information").show(ctx, |ui| {
-            ScrollArea::vertical().show(ui, |ui| {
-                tag::list(db, db.tags.keys(), ui);
-            });
+            ScrollArea::vertical()
+                .auto_shrink([false, true])
+                .show(ui, |ui| {
+                    tag::list(db, db.tags.keys(), ui);
+                });
         });
     }
     fn name(&self, _: &DbBackend) -> String {
