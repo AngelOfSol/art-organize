@@ -1,5 +1,6 @@
 use crate::{
     backend::DbBackend,
+    config::Config,
     frontend::texture_storage::{ImageData, ImageStatus},
     ui_memory::MemoryExt,
     views::{gallery::Gallery, View, ViewResponse},
@@ -8,6 +9,7 @@ use db::BlobId;
 use egui::{CentralPanel, TopBottomPanel};
 
 pub mod blob;
+pub mod category;
 pub mod easy_mark_editor;
 pub mod piece;
 pub mod tag;
@@ -49,6 +51,22 @@ impl Frontend {
                         ui.close_menu();
                     }
                     if ui.button("Load").clicked() {
+                        tokio::spawn(async {
+                            let mut path = rfd::AsyncFileDialog::new()
+                                .add_filter("ArtOrganize Database", &["aodb"])
+                                .pick_file()
+                                .await?
+                                .path()
+                                .to_path_buf();
+
+                            let db = DbBackend::from_file(path.clone()).await.ok()?;
+                            let mut config = Config::load().unwrap();
+                            path.pop();
+                            config.default_dir = Some(path);
+                            config.save().unwrap();
+                            dbg!("");
+                            Some(())
+                        });
                         ui.close_menu();
                     }
                     ui.separator();

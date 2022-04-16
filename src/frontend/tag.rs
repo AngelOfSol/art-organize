@@ -4,6 +4,7 @@ use itertools::Itertools;
 
 use crate::{
     backend::DbBackend,
+    frontend::category,
     ui_memory::MemoryExt,
     views::{edit_tag::EditTag, view_tag::ViewTag},
 };
@@ -50,7 +51,7 @@ pub fn list(db: &DbBackend, iter: impl Iterator<Item = TagId>, ui: &mut egui::Ui
         .sorted_by_key(|category_id| &db[category_id].name)
         .dedup()
     {
-        ui.label(&db[category_id].name);
+        category::label(ui, db, category_id);
 
         ui.indent("category_indent", |ui| {
             for tag_id in iter

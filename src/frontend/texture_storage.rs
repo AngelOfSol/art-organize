@@ -9,16 +9,11 @@ use wgpu::{util::DeviceExt, Device, Extent3d, Queue, TextureDescriptor};
 
 use crate::backend::DbBackend;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ImageRequest {
-    pub request_type: ImageRequestType,
-
-    blob_id: BlobId,
-}
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum ImageRequestType {
-    Thumbnail,
-    Image,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ImageRequest {
+    Thumbnail(BlobId),
+    Image(BlobId),
+    External(PathBuf),
 }
 
 pub struct ImageData {
@@ -28,18 +23,23 @@ pub struct ImageData {
 }
 
 impl ImageData {
+    #[allow(dead_code)]
+    pub fn external_image_for(&self, path: PathBuf) -> ImageStatus {
+        let request = ImageRequest::External(path.clone());
+        if let Some(image) = self.image.get(&request).copied() {
+            ImageStatus::Available(image)
+        } else {
+            let _ = self.outgoing.send((request, path)).unwrap();
+            ImageStatus::Unavailable
+        }
+    }
     pub fn image_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
-        let request = ImageRequest {
-            blob_id,
-            request_type: ImageRequestType::Image,
-        };
+        let request = ImageRequest::Image(blob_id);
+
         self.request(request, db, blob_id)
     }
     pub fn thumbnail_for(&self, blob_id: BlobId, db: &DbBackend) -> ImageStatus {
-        let request = ImageRequest {
-            blob_id,
-            request_type: ImageRequestType::Thumbnail,
-        };
+        let request = ImageRequest::Thumbnail(blob_id);
         self.request(request, db, blob_id)
     }
 
@@ -101,7 +101,7 @@ impl TextureLoadingTask {
             let mut load_requested = BTreeSet::new();
             while let Ok((request, path)) = handle.incoming.recv() {
                 if !load_requested.contains(&request) {
-                    load_requested.insert(request);
+                    load_requested.insert(request.clone());
 
                     let send_image = handle.outgoing.clone();
 
@@ -111,9 +111,9 @@ impl TextureLoadingTask {
                         use image::GenericImageView as _;
                         let image = image::load_from_memory(&image_data)?;
 
-                        let image = match request.request_type {
-                            ImageRequestType::Thumbnail => image.thumbnail(256, 256),
-                            ImageRequestType::Image => image,
+                        let image = match &request {
+                            ImageRequest::Thumbnail(_) => image.thumbnail(256, 256),
+                            ImageRequest::Image(_) | ImageRequest::External(_) => image,
                         };
 
                         let image = RawImage {

@@ -1,5 +1,5 @@
 use db::{BlobId, BlobType};
-use egui::SidePanel;
+use egui::{ComboBox, SidePanel};
 use strum::IntoEnumIterator;
 
 use crate::{
@@ -43,13 +43,13 @@ impl View for EditBlob {
             ui.add(TextItemEdit::new(parent_id.with("Added"), &mut blob.added).hint_text("Added"));
             ui.label(format!("Hash: {:#x}", blob.hash));
 
-            ui.label("Type");
-            ui.separator();
-            ui.indent(parent_id.with("indent"), |ui| {
-                for blob_type in BlobType::iter() {
-                    ui.selectable_value(&mut blob.blob_type, blob_type, blob_type.to_string());
-                }
-            });
+            ComboBox::from_label("Type")
+                .selected_text(blob.blob_type.to_string())
+                .show_ui(ui, |ui| {
+                    for blob_type in BlobType::iter() {
+                        ui.selectable_value(&mut blob.blob_type, blob_type, blob_type.to_string());
+                    }
+                });
         });
     }
 }

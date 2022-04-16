@@ -5,7 +5,7 @@ use crate::{
     views::View,
 };
 use db::TagId;
-use egui::{popup_below_widget, show_tooltip, ComboBox, Response, ScrollArea, SidePanel};
+use egui::{ComboBox, ScrollArea, SidePanel};
 use itertools::Itertools;
 
 #[derive(Clone, Copy)]

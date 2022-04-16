@@ -1,3 +1,4 @@
+use self_update::cargo_crate_version;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -18,7 +19,7 @@ pub struct Config {
 
 fn get_file() -> PathBuf {
     let mut config_file = PROJECT.config_dir().to_path_buf();
-    config_file.push("config.toml");
+    config_file.push(format!("config.{}.toml", cargo_crate_version!()));
 
     config_file
 }
